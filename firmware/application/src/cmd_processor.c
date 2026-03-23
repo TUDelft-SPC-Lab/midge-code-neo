@@ -26,6 +26,9 @@ struct CustomAdvertisementData advertised_data = {
     .badge_assignment = {.u16_all = 0xFFFF}
 };
 
+
+// ======== Aggregate functionality command implementations ======== //
+
 int cmd_setup_experiment(uint8_t* data) {
     struct CmdSetupExperimentRequest* req_data = (struct CmdSetupExperimentRequest*)data;
     struct CmdSetupExperimentResponse* resp_data = (struct CmdSetupExperimentResponse*)data;
@@ -83,14 +86,6 @@ int cmd_get_fw_version(uint8_t* data) {
 }
 
 
-int cmd_erase_sd(uint8_t* data) {
-    // struct CmdEraseSDRequest* req_data = (struct CmdEraseSDRequest*)data;
-    struct CmdEraseSDResponse* resp_data = (struct CmdEraseSDResponse*)data;
-    int ret = storage_erase(DISK_MOUNT_POINT);
-    resp_data->status_code = ret;
-    return ret;
-}
-
 enum cmd_state { READ_SOT, READ_CMD, READ_DATA, READ_EOT };
 
 struct cmd_processor_lut_entry {
@@ -115,8 +110,7 @@ struct cmd_processor_lut_entry commands[] = {
     // file transfer commands missing
 
 
-#define COMMAND_COUNT sizeof(commands)
-#define MAX_CMD_DATA_SZ 128
+#define COMMAND_COUNT ARRAY_SIZE(commands)
 
 int invalid_cmd(uint8_t* data) {
     printf("ERROR IN CMD PROCESSOR CONTROL FLOW");
@@ -126,7 +120,7 @@ int invalid_cmd(uint8_t* data) {
 static void received(struct bt_conn* conn, const void* data, uint16_t len, void* ctx) {
     static enum cmd_state rx_cmd_state = READ_SOT;
     // SOT + CMD_ID + DATA + EOT
-    static uint8_t cmd_data[MAX_CMD_DATA_SZ];
+    static uint8_t cmd_data[INTERFACE_CMD_SZ];
     static int cmd_data_idx = 0;                      // currently read data
     static int cmd_req_data_size = 0;                 // how much data to read
     static int cmd_resp_data_size = 0;                // how much data to send

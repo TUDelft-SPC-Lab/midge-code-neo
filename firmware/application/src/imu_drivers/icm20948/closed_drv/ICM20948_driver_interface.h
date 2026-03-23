@@ -29,7 +29,7 @@ typedef enum{
 #define MAX_IMU_SOURCES 4
 
 
-#define IMU_BUFFER_SIZE 32
+#define IMU_BUFFER_SIZE 16
 
 typedef struct {
 	uint64_t timestamp;

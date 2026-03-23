@@ -4,9 +4,10 @@
 #include <zephyr/sys/util.h>
 
 #include "audio.h"
-#include "imu.h"
 #include "battery_charge.h"
 #include "cmd_processor.h"
+#include "imu.h"
+#include "midge_protocol.h"
 #include "privacy_switch.h"
 #include "proximity.h"
 #include "status_led.h"
@@ -32,7 +33,7 @@ static int run_inits(const struct init_item* items, size_t n) {
     return ret;
 }
 
- int main() {
+int main() {
     int ret = led_init();
     if (ret < 0) {
         LOG_ERR("Failed to initialize LED");
@@ -49,9 +50,7 @@ static int run_inits(const struct init_item* items, size_t n) {
         {cmd_processor_init,  "command processor"},
     };
 
-
-
-    ret =  run_inits(inits, ARRAY_SIZE(inits));
+    ret = run_inits(inits, ARRAY_SIZE(inits));
 
     /*audio_sensor_start(2, 1);
     k_sleep(K_SECONDS(60*3));

@@ -3,6 +3,13 @@
 
 #include <inttypes.h>
 
+enum audio_sensor_state {
+    AUDIO_SENSOR_STATE_DISABLED = 0,
+    AUDIO_SENSOR_STATE_ACTIVE = 1,
+    AUDIO_SENSOR_STATE_STOP = 2,
+    AUDIO_SENSOR_STATE_ERR = 3,
+};
+
 uint8_t audio_sensor_get_status();
 
 int audio_sensor_init();
@@ -21,10 +28,10 @@ struct AudioMetaData {
         AUDIO_EVENT_TYPE_TRIGGER_START = 0,
         AUDIO_EVENT_TYPE_TRIGGER_STOP = 1
     } event_type;
-    uint16_t frequency_hz; // only used for trigger start events to indicate the sampling frequency of the recorded samples
+    uint16_t frequency_hz;  // only used for trigger start events to indicate the sampling frequency
+                            // of the recorded samples
     uint8_t num_channels;
 };
-
 
 // int proximity_sensor_change_config(uint16_t interval, uint16_t window);
 

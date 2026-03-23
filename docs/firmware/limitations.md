@@ -26,3 +26,6 @@
 
   Given the max file size of FAT32 is 4 GiB, ~14 hours is the most that can be
   recorded in a single audio file
+
+- Experiment Folders: The SD cards are expected to be formatted with a max
+  of 32 root directories. This configuration can be changed, but is the default.

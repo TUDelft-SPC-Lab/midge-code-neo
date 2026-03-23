@@ -58,12 +58,7 @@ struct pcm_stream_cfg stream = {
 };
 
 static struct {
-    enum {
-        AUDIO_SENSOR_STATE_DISABLED = 0,
-        AUDIO_SENSOR_STATE_ACTIVE = 1,
-        AUDIO_SENSOR_STATE_STOP = 2,
-        AUDIO_SENSOR_STATE_ERR = 3,
-    } state;
+    enum audio_sensor_state state;
     struct dmic_cfg audio_config;
     uint16_t sample_iter;
 } sensor_data = {.state = AUDIO_SENSOR_STATE_DISABLED, .sample_iter = 0, .audio_config = {}};

@@ -2,7 +2,11 @@
 #define MB_PROTOCOL_H
 
 #include <inttypes.h>
+#include <stddef.h>
 
+#define INTERFACE_CMD_DATA_SZ ((size_t)125U)
+#define INTERFACE_CMD_SZ (INTERFACE_CMD_DATA_SZ + 3) // SOT+CMD_ID+DATA+EOT
+#define INTERFACE_MAX_FILE_NAME ((size_t)12U*3U) // 8.3 Filename, 3 lvl depth
 
 // ==== Miscellaneous data types ===== //
 union __attribute__((packed)) BadgeAssignment {
@@ -114,5 +118,37 @@ struct __attribute__((packed)) CmdStopIMURequest{
 struct __attribute__((packed)) CmdStopIMUResponse{
   int32_t status_code;
 };
+
+
+/// ==== File transfer related messages, not yet implemented ====
+struct __attribute__((packed)) CmdGetFileIndexInfoRequest{
+  int16_t index;
+};
+
+struct __attribute__((packed)) CmdGetFileIndexInfoResponse{
+  int16_t index; // negative index for error code
+  uint32_t size_bytes;
+  uint8_t path[INTERFACE_MAX_FILE_NAME]; // 3 levels of depth, i.e. SD/folder/file, 8.3 names
+};
+
+struct __attribute__((packed)) CmdGetFileCRC32Request{
+  uint8_t path[INTERFACE_MAX_FILE_NAME];
+};
+
+struct __attribute__((packed)) CmdGetFileCRC32Response{
+  uint32_t crc32;
+  int32_t status_code;
+};
+
+struct __attribute__((packed)) CmdDownloadFileChunkRequest{
+  uint8_t path[INTERFACE_MAX_FILE_NAME];
+  uint16_t offset;
+};
+
+struct __attribute__((packed)) CmdDownloadFileChunkResponse{
+  uint8_t data[INTERFACE_CMD_DATA_SZ - 4];
+  int16_t bytes; // 0 means end of file, negative encodes error code
+};
+
 
 #endif

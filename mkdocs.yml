@@ -4,6 +4,7 @@ nav:
   - Home: index.md
   - Firmware:
       - Limitations: firmware/limitations.md
+      - Improvements: firmware/improvements.md
 
 theme: material
 
