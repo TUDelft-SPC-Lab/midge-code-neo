@@ -1,5 +1,6 @@
 import asyncio
 import cmd
+import logging
 import time
 from threading import Thread
 
@@ -24,6 +25,8 @@ from midge_badge_framework.protocol import (
 DEFAULT_IMU_ACC_FSR = 4
 DEFAULT_IMU_GYR_FSR = 1000
 DEFAULT_IMU_DATARATE = 50
+
+logging.basicConfig(level=logging.INFO)
 
 
 class MidgeBadgeConsole(cmd.Cmd):
@@ -109,7 +112,6 @@ class MidgeBadgeConsole(cmd.Cmd):
                 print("Warning: No active clients, connect to a new client before sending another command")
 
         else:
-            print(f"Sent {self.active_client.get_address()} the request: {request}")
             self.active_client.execute_command_log_resp(request)
 
     def do_setup_experiment(self, arg):

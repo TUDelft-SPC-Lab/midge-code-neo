@@ -1,5 +1,6 @@
 import asyncio
 import io
+import logging
 from collections.abc import Iterator
 from ctypes import sizeof
 from enum import Enum
@@ -15,6 +16,8 @@ from .protocol import CMD_RESPONSES, EOT, SOT, MidgeBadgeCommand
 UART_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 UART_RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 UART_TX_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+
+logger = logging.getLogger(__name__)
 
 
 # TIP: you can get this function and more from the ``more-itertools`` package.
@@ -69,17 +72,17 @@ class MidgeBadgeClient:
     def __find_filter(self, device: BLEDevice, adv: AdvertisementData):
         nus_present = UART_SERVICE_UUID.lower() in adv.service_uuids
         addr_match = True if (self.address is None) else device.address == self.address
-        print(f"{device} {self.address}")
+        logger.debug("%s %s", device, self.address)
         return nus_present and addr_match
 
     def __handle_disconnect(self, client: BleakClient):
-        print(f"Disconnected {client.address}")
+        logger.info("Disconnected %s", client.address)
         self.connected = False
         # for task in asyncio.all_tasks(self.__loop):
         #    task.cancel()
 
     def __handle_tx_notify(self, _: BleakGATTCharacteristic, data: bytearray):
-        print(f"got {data}")
+        logger.debug("got %s", data)
         byte_pieces = [b.to_bytes() for b in data]
         for byte in byte_pieces:
             match self.__tx_notify_state:
@@ -90,19 +93,19 @@ class MidgeBadgeClient:
                     self.__cmd = None
 
                     for response in CMD_RESPONSES:
-                        print(f"id {response.id()}, byte {byte}")
+                        logger.debug("id %s, byte %s", response.id(), byte)
                         if response.id() == byte:
                             self.__cmd = response
                             break
 
-                    print(self.__cmd)
+                    logger.debug("%s", self.__cmd)
                     if (self.__cmd) is None:
-                        print("Error: received trash data")
+                        logger.error("Error: received trash data")
                         self.__tx_notify_state = NotifyState.READ_SOT
                     else:
                         self.__response_buffer = bytearray()
                         self.__response_buffer_len = sizeof(self.__cmd)
-                        print(f"Expecting {self.__response_buffer_len} bytes of data")
+                        logger.debug("Expecting %s bytes of data", self.__response_buffer_len)
 
                         self.__response_buffer_idx = 0
                         self.__tx_notify_state = NotifyState.READ_DATA
@@ -119,11 +122,11 @@ class MidgeBadgeClient:
                         buf.readinto(response)
                         self.__response_queue.put_sync(response)
                     else:
-                        print("bad response termination")
+                        logger.error("bad response termination")
 
                     self.__tx_notify_state = NotifyState.READ_SOT
                 case _:
-                    print("Invalid state")
+                    logger.error("Invalid state")
 
     async def start(self):
         def filter(device, adv):
@@ -139,7 +142,7 @@ class MidgeBadgeClient:
             return self.__handle_disconnect(client)
 
         async with BleakClient(self.device, disconnected_callback=disconnect_cb) as client:
-            print(f"Connected to midge {self.device.address}")
+            logger.info("Connected to midge %s", self.device.address)
 
             self.__tx_notify_state = NotifyState.READ_SOT
             self.__tx_notify_buffer = bytearray()
@@ -162,7 +165,7 @@ class MidgeBadgeClient:
                 try:
                     async with asyncio.Timeout(2):
                         request = await self.__request_queue.get()
-                        print(request)
+                        logger.info("%s %s", self.address, request)
                 except Exception as _:
                     continue
 
@@ -174,7 +177,7 @@ class MidgeBadgeClient:
                 for s in sliced(buffer, rx_characteristic.max_write_without_response_size):
                     await client.write_gatt_char(rx_characteristic, s, response=False)
 
-                print("sent:", buffer)
+                logger.debug("sent to %s: %s", self.address, buffer)
 
     def stop(self):
         self.connected = False
@@ -187,4 +190,4 @@ class MidgeBadgeClient:
 
     def execute_command_log_resp(self, request: MidgeBadgeCommand):
         self.send_command(request)
-        print(f"response: {self.get_response()}")
+        logger.info("%s %s", self.address, self.get_response())
