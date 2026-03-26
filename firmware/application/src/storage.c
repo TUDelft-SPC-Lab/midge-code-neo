@@ -259,7 +259,7 @@ int storage_init_experiment(int id) {
     if (storage_status != MB_STORAGE_STATUS_INIT_OK_INACTIVE) {
         LOG_ERR("Cannot init experiment folder while sampling is ongoing");
         ret = -EACCES;
-    } else if (snprintf(active_experiment_dir, MAX_PATH_LEN, "/" DISK_NAME ":/%d", id) >
+    } else if (snprintf(active_experiment_dir, MAX_PATH_LEN, "/" DISK_NAME ":/%d", id) >=
                MAX_PATH_LEN) {
         ret = -ENAMETOOLONG;
     } else {
@@ -502,6 +502,7 @@ int cmd_get_file_index_info(uint8_t* data) {
     struct CmdGetFileIndexInfoRequest* req_data = (struct CmdGetFileIndexInfoRequest*)data;
     struct CmdGetFileIndexInfoResponse* resp_data = (struct CmdGetFileIndexInfoResponse*)data;
     int16_t index = req_data->index;
+    memset(resp_data, 0, sizeof(struct CmdGetFileIndexInfoResponse));
     resp_data->index = index;
     struct GetFileNameFromIndexContext context = {.resp_data = resp_data, .found = false};
 
@@ -510,14 +511,6 @@ int cmd_get_file_index_info(uint8_t* data) {
         LOG_INF("no file found for index %d, err %d", index, res);
         res = -ENOENT;
     }
-    if (resp_data->index < 0) {
-        LOG_ERR("error trying to get file name from index %d, err %d", resp_data->index, res);
-    }
-    if (resp_data->size_bytes == 0) {
-        LOG_ERR("no file found for index %d", req_data->index);
-        res = -ENOENT;
-    }
-
     resp_data->index = (context.found)
                            ? resp_data->index
                            : res;  // set to -1 to indicate error, valid index is non-negative
@@ -527,6 +520,7 @@ int cmd_get_file_index_info(uint8_t* data) {
 int cmd_get_file_crc32(uint8_t* data) {
     struct CmdGetFileCRC32Request* req_data = (struct CmdGetFileCRC32Request*)data;
     struct CmdGetFileCRC32Response* resp_data = (struct CmdGetFileCRC32Response*)data;
+    req_data->path[INTERFACE_MAX_FILE_NAME - 1] = '\0';  // ensure null termination
     struct fs_file_t file;
     fs_file_t_init(&file);
     uint8_t buffer[512] __aligned(32);
@@ -561,10 +555,11 @@ int cmd_get_file_crc32(uint8_t* data) {
 }
 
 // add guard
-struct fs_file_t file_for_chunk_download;
+static struct fs_file_t file_for_chunk_download;
 int cmd_download_file_chunk(uint8_t* data) {
     struct CmdDownloadFileChunkRequest* req_data = (struct CmdDownloadFileChunkRequest*)data;
     struct CmdDownloadFileChunkResponse* resp_data = (struct CmdDownloadFileChunkResponse*)data;
+    req_data->path[INTERFACE_MAX_FILE_NAME - 1] = '\0';  // ensure null termination
     static bool opened_file_for_download = false;
     int res = 0;
     if (req_data->offset == 0) {
@@ -577,13 +572,22 @@ int cmd_download_file_chunk(uint8_t* data) {
         res = fs_open(&file_for_chunk_download, (char*)req_data->path, FS_O_READ);
         if (res < 0) {
             LOG_ERR("could not open file %s to download chunk, err %d", req_data->path, res);
+            resp_data->bytes = res;  // set to error code
             return res;
         }
         opened_file_for_download = true;
     }
 
+    if (!opened_file_for_download) {
+        LOG_ERR("file not opened for download but got offset %d, path %s", req_data->offset,
+                req_data->path);
+        resp_data->bytes = -EPERM;  // set to error code
+        return -EPERM;
+    }
+
+
     off_t offset = req_data->offset;
-    LOG_DBG("opened file %s to download chunk at offset %d", req_data->path, offset);
+    LOG_DBG("opened file %s to download chunk at offset %ld", req_data->path, offset);
 
     // no need to preserve the path
     // memset(resp_data->data, 0, sizeof(resp_data->data));
@@ -599,7 +603,7 @@ int cmd_download_file_chunk(uint8_t* data) {
         if (res < 0) {
             LOG_ERR("error reading file %s to download chunk, err %d", req_data->path, res);
         }
-        LOG_DBG("read chunk from file %s at offset %d, bytes read %d", req_data->path, offset, res);
+        LOG_DBG("read chunk from file %s at offset %ld, bytes read %d", req_data->path, offset, res);
     } while (0);
 
     if (res <= 0) {

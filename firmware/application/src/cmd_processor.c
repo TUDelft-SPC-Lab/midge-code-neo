@@ -118,8 +118,6 @@ struct cmd_processor_lut_entry commands[] = {
      sizeof(struct CmdGetFileCRC32Response), cmd_get_file_crc32},
     {CMD_ID_DOWNLOAD_FILE_CHUNK, sizeof(struct CmdDownloadFileChunkRequest),
      sizeof(struct CmdDownloadFileChunkResponse), cmd_download_file_chunk}};
-// get SD space command missing
-// file transfer commands missing
 
 #define COMMAND_COUNT ARRAY_SIZE(commands)
 
@@ -156,6 +154,7 @@ static void received(struct bt_conn* conn, const void* data, uint16_t len, void*
                 break;
             case READ_CMD:
                 bool cmd_is_valid = false;
+                execute_cmd = invalid_cmd;  // default to invalid command
                 for (int j = 0; j < COMMAND_COUNT; j++) {
                     if (c == commands[j].cmd_id) {
                         execute_cmd = commands[j].execute_cmd;
@@ -168,15 +167,12 @@ static void received(struct bt_conn* conn, const void* data, uint16_t len, void*
                         break;
                     }
                 }
-                if (execute_cmd == invalid_cmd) {
-                    LOG_ERR("Received command ID %c does not match any valid command", c);
-                }
                 if (!cmd_is_valid) {
                     // invalid command, go back to read SOT
                     rx_cmd_state = READ_SOT;
                     LOG_ERR("Received invalid command ID: %c", c);
                 }else{
-                    LOG_DBG("Received valid commad ID: %c, expecting %d bytes of data", c,
+                    LOG_DBG("Received valid command ID: %c, expecting %d bytes of data", c,
                             cmd_req_data_size - 2);
                 }
 

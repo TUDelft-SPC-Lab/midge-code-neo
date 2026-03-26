@@ -223,10 +223,10 @@ class MidgeBadgeClient:
     def download_file(self, path: str, outfile: str):
         path_bytes = path.encode("utf-8")
         path_type = c_uint8 * INTERFACE_MAX_FILE_NAME
-        path_bytes = path_type(*path_bytes)
-        if len(path_bytes) > INTERFACE_MAX_FILE_NAME:
+        if len(path_bytes) >= INTERFACE_MAX_FILE_NAME:
             logger.error("Path must be at most %d bytes long", INTERFACE_MAX_FILE_NAME)
             return
+        path_bytes = path_type(*path_bytes)
 
         file_data = bytearray()
         offset = 0
@@ -252,6 +252,10 @@ class MidgeBadgeClient:
         resp = self.get_response()
         if not isinstance(resp, CmdGetFileCRC32Response):
             logger.error("Unexpected response type: %s", resp.__class__)
+            return
+
+        if resp.status_code != 0:
+            logger.error("Error getting file CRC32: %d", resp.status_code)
             return
         crc32 = resp.crc32
         logger.info("Expected CRC32: %08x", crc32)

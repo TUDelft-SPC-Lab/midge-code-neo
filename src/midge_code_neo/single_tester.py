@@ -129,7 +129,7 @@ class MidgeBadgeConsole(cmd.Cmd):
         Note: group_id, badge_id and experiment_id must be numbers.
               group_id must be between 0 and 15, badge_id must be between 0 and 4095
         """
-        args = arg.split(" ")
+        args = arg.split()
         if len(args) != 3:
             print("Error: Invalid syntax, expected 3 arguments")
             return
@@ -184,12 +184,12 @@ class MidgeBadgeConsole(cmd.Cmd):
         Usage:
             start_mic <sample_id> <mode>
         """
-        args = arg.split(" ")
+        args = arg.split()
         try:
             id = int(args[0], 0)
             mode = int(args[1], 0)
         except Exception as _:
-            print("Error: Invalid syntax, <sample_id> must be a number")
+            print("Error: Invalid syntax, <sample_id> and <mode> must be numbers")
             return
 
         request = CmdStartMicRequest(id, mode)
@@ -236,7 +236,7 @@ class MidgeBadgeConsole(cmd.Cmd):
         Usage:
             start_imu <sample_id> <acc_fsr> <gyr_fsr> <datarate>
         """
-        args = arg.split(" ")
+        args = arg.split()
         if len(args) != 4:
             print("Error: Invalid syntax, expected 4 arguments")
             return
@@ -321,6 +321,9 @@ class MidgeBadgeConsole(cmd.Cmd):
             return
 
         path_bytes = path.encode("utf-8")
+        if len(path_bytes) >= INTERFACE_MAX_FILE_NAME:
+            print("Error: Path is too long")
+            return
         path_type = c_uint8 * INTERFACE_MAX_FILE_NAME
         path_bytes = path_type(*path_bytes)
         request = CmdGetFileCRC32Request(path_bytes)
@@ -357,7 +360,7 @@ class MidgeBadgeConsole(cmd.Cmd):
         Note: <path_on_badge> should be the full path as listed by the "list_files" command, including the leading "/"
         """
 
-        args = arg.split(" ")
+        args = arg.split()
         if len(args) != 2:
             print("Error: Invalid syntax, expected 2 arguments")
             return
