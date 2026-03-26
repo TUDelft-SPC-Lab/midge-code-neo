@@ -455,9 +455,31 @@ int cmd_erase_sd(uint8_t* data) {
     return ret;
 }
 
+int cmd_get_free_sd_space(uint8_t* data) {
+    // struct CmdGetFreeSDSpaceRequest* req_data = (struct CmdGetFreeSDSpaceRequest*)data;
+    struct CmdGetFreeSDSpaceResponse* resp_data = (struct CmdGetFreeSDSpaceResponse*)data;
+    struct fs_statvfs stat;
+    int res = fs_statvfs(mp.mnt_point, &stat);
+    if (res < 0) {
+        LOG_ERR("could not get free space, err %d", res);
+        resp_data->free_bytes = 0;
+        return res;
+    }
+    resp_data->free_bytes = stat.f_bfree * stat.f_frsize;
+    return 0;
+}
+
+struct GetFileNameFromIndexContext {
+    struct CmdGetFileIndexInfoResponse* resp_data;
+    bool found;
+};
+
 static int get_file_name_from_index(char* path, int16_t index, void* context) {
-    struct CmdGetFileIndexInfoResponse* resp_data = (struct CmdGetFileIndexInfoResponse*)context;
+    struct GetFileNameFromIndexContext* ctx = (struct GetFileNameFromIndexContext*)context;
+    struct CmdGetFileIndexInfoResponse* resp_data = ctx->resp_data;
+
     if (index == resp_data->index) {
+        ctx->found = true;
         // populate response with file info
         struct fs_dirent file_stat;
         int res = fs_stat(path, &file_stat);
@@ -473,6 +495,7 @@ static int get_file_name_from_index(char* path, int16_t index, void* context) {
             return 0;
         }
     }
+    return 0;  // keep looking for the file with the right index
 }
 
 int cmd_get_file_index_info(uint8_t* data) {
@@ -480,18 +503,24 @@ int cmd_get_file_index_info(uint8_t* data) {
     struct CmdGetFileIndexInfoResponse* resp_data = (struct CmdGetFileIndexInfoResponse*)data;
     int16_t index = req_data->index;
     resp_data->index = index;
-    int res = storage_do_per_file_in_sd(get_file_name_from_index, resp_data);
+    struct GetFileNameFromIndexContext context = {.resp_data = resp_data, .found = false};
+
+    int res = storage_do_per_file_in_sd(get_file_name_from_index, &context);
+    if (context.found == false) {
+        LOG_INF("no file found for index %d, err %d", index, res);
+        res = -ENOENT;
+    }
     if (resp_data->index < 0) {
-        LOG_ERR("error trying to get file name from index %d, err %d", req_data->index, res);
+        LOG_ERR("error trying to get file name from index %d, err %d", resp_data->index, res);
     }
     if (resp_data->size_bytes == 0) {
         LOG_ERR("no file found for index %d", req_data->index);
         res = -ENOENT;
     }
 
-    resp_data->index =
-        (res < 0) ? res
-                  : resp_data->index;  // set to -1 to indicate error, valid index is non-negative
+    resp_data->index = (context.found)
+                           ? resp_data->index
+                           : res;  // set to -1 to indicate error, valid index is non-negative
     return resp_data->index;
 }
 
@@ -500,7 +529,7 @@ int cmd_get_file_crc32(uint8_t* data) {
     struct CmdGetFileCRC32Response* resp_data = (struct CmdGetFileCRC32Response*)data;
     struct fs_file_t file;
     fs_file_t_init(&file);
-    uint8_t buffer[32];
+    uint8_t buffer[512] __aligned(32);
     uint32_t checksum = 0;
 
     int res = fs_open(&file, (char*)req_data->path, FS_O_READ);
@@ -515,6 +544,8 @@ int cmd_get_file_crc32(uint8_t* data) {
         if (res < 0) {
             LOG_ERR("error reading file %s to get crc32, err %d", req_data->path, res);
             resp_data->status_code = res;
+            int off = fs_tell(&file);
+            LOG_ERR("error occurred at offset %d in file %s", off, req_data->path);
             break;
         }
         checksum = crc32_ieee_update(checksum, buffer, res);
@@ -524,40 +555,60 @@ int cmd_get_file_crc32(uint8_t* data) {
         LOG_ERR("error closing file %s after getting crc32, err %d", req_data->path, res);
     }
     resp_data->crc32 = checksum;
+    resp_data->status_code = (res < 0) ? res : 0;
+    res = resp_data->status_code;
     return res;
 }
 
+// add guard
+struct fs_file_t file_for_chunk_download;
 int cmd_download_file_chunk(uint8_t* data) {
     struct CmdDownloadFileChunkRequest* req_data = (struct CmdDownloadFileChunkRequest*)data;
     struct CmdDownloadFileChunkResponse* resp_data = (struct CmdDownloadFileChunkResponse*)data;
-    struct fs_file_t file;
-    fs_file_t_init(&file);
-    off_t offset = req_data->offset;
-    int res = fs_open(&file, (char*)req_data->path, FS_O_READ);
-    if (res < 0) {
-        LOG_ERR("could not open file %s to download chunk, err %d", req_data->path, res);
-        return res;
+    static bool opened_file_for_download = false;
+    int res = 0;
+    if (req_data->offset == 0) {
+        // close prev file if opened for some reason
+        if (opened_file_for_download) {
+            fs_close(&file_for_chunk_download);
+        }
+        // new download, open file
+        fs_file_t_init(&file_for_chunk_download);
+        res = fs_open(&file_for_chunk_download, (char*)req_data->path, FS_O_READ);
+        if (res < 0) {
+            LOG_ERR("could not open file %s to download chunk, err %d", req_data->path, res);
+            return res;
+        }
+        opened_file_for_download = true;
     }
 
+    off_t offset = req_data->offset;
+    LOG_DBG("opened file %s to download chunk at offset %d", req_data->path, offset);
+
     // no need to preserve the path
-    memset(resp_data->data, 0, sizeof(resp_data->data));
+    // memset(resp_data->data, 0, sizeof(resp_data->data));
     do {
         // seek to offset
-        res = fs_seek(&file, offset, FS_SEEK_SET);
+        res = fs_seek(&file_for_chunk_download, offset, FS_SEEK_SET);
         if (res < 0) {
             LOG_ERR("could not seek in file %s to download chunk, err %d", req_data->path, res);
             break;
         }
         // read chunk
-        res = fs_read(&file, resp_data->data, sizeof(resp_data->data));
+        res = fs_read(&file_for_chunk_download, resp_data->data, sizeof(resp_data->data));
         if (res < 0) {
             LOG_ERR("error reading file %s to download chunk, err %d", req_data->path, res);
         }
+        LOG_DBG("read chunk from file %s at offset %d, bytes read %d", req_data->path, offset, res);
     } while (0);
 
-    if (fs_close(&file) < 0) {
-        LOG_ERR("error closing file %s after downloading chunk, err %d", req_data->path, res);
+    if (res <= 0) {
+        if (fs_close(&file_for_chunk_download) < 0) {
+            LOG_ERR("error closing file %s, err %d", req_data->path, res);
+        }
+        opened_file_for_download = false;
     }
+
     resp_data->bytes = res;  // set to 0 to indicate end of file
     return res;
 }

@@ -1,5 +1,29 @@
 from abc import abstractmethod
-from ctypes import Structure, Union, c_int16, c_int32, c_uint8, c_uint16, c_uint64
+from ctypes import Structure, Union, c_int16, c_int32, c_uint8, c_uint16, c_uint32, c_uint64
+from enum import IntEnum
+
+# analogue of midge_protocol.h
+
+INTERFACE_CMD_DATA_SZ = 512 + 4
+INTERFACE_CMD_SZ = INTERFACE_CMD_DATA_SZ + 3
+INTERFACE_MAX_FILE_NAME = 12 * 3  # 3 levels of depth, i.e. SD/folder/file, 8.3 names
+
+
+class MidgeBadgeCommandID(IntEnum):
+    CMD_ID_SETUP_EXPERIMENT = ord("A")
+    CMD_ID_STATUS = ord("B")
+    CMD_ID_GET_FW_VERSION = ord("C")
+    CMD_ID_START_MIC = ord("D")
+    CMD_ID_STOP_MIC = ord("E")
+    CMD_ID_START_SCAN = ord("F")
+    CMD_ID_STOP_SCAN = ord("G")
+    CMD_ID_START_IMU = ord("H")
+    CMD_ID_STOP_IMU = ord("I")
+    CMD_ID_ERASE_SD = ord("J")
+    CMD_ID_GET_FREE_SD_SPACE = ord("K")
+    CMD_ID_GET_FILE_INDEX_INFO = ord("L")
+    CMD_ID_GET_FILE_CRC32 = ord("M")
+    CMD_ID_DOWNLOAD_FILE_CHUNK = ord("N")
 
 
 def mingle_midge_batt_mv_to_percent(mv):
@@ -34,7 +58,7 @@ def get_bitfield_width(struct_cls, name):
 
 class MidgeBadgeCommand(Structure):
     @abstractmethod
-    def id() -> bytes:
+    def id() -> int:
         pass
 
     def __str__(self):
@@ -102,24 +126,24 @@ class CmdSetupExperimentRequest(Structure):
         ("experiment_id", c_uint16),
     ]
 
-    def id() -> bytes:
-        return b"A"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_SETUP_EXPERIMENT
 
 
 class CmdSetupExperimentResponse(Structure):
     _pack_ = 1
     _fields_ = [("status_code", c_uint8)]
 
-    def id() -> bytes:
-        return b"A"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_SETUP_EXPERIMENT
 
 
 class CmdStatusRequest(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("millis_since_epoch", c_uint64)]
 
-    def id() -> bytes:
-        return b"B"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_STATUS
 
 
 class CmdStatusResponse(MidgeBadgeCommand):
@@ -134,104 +158,88 @@ class CmdStatusResponse(MidgeBadgeCommand):
         ("delta_ms", c_uint64),
     ]
 
-    def id() -> bytes:
-        return b"B"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_STATUS
 
 
 class CmdGetFWVersionRequest(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("reserved", c_uint16)]
 
-    def id() -> bytes:
-        return b"C"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_GET_FW_VERSION
 
 
 class CmdGetFWVersionResponse(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("version_str", c_uint8 * 32)]
 
-    def id() -> bytes:
-        return b"C"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_GET_FW_VERSION
 
 
 class CmdStartMicRequest(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("sample_id", c_uint16), ("mode", c_uint8)]
 
-    def id() -> bytes:
-        return b"D"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_START_MIC
 
 
 class CmdStartMicResponse(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
-    def id() -> bytes:
-        return b"D"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_START_MIC
 
 
 class CmdStopMicRequest(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("reserved", c_uint16)]
 
-    def id() -> bytes:
-        return b"E"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_STOP_MIC
 
 
 class CmdStopMicResponse(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("reserved", c_int32)]
 
-    def id() -> bytes:
-        return b"E"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_STOP_MIC
 
 
 class CmdStartScanRequest(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("sample_id", c_uint16), ("window", c_uint16), ("interval", c_uint16), ("reserved", c_uint16)]
 
-    def id() -> bytes:
-        return b"F"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_START_SCAN
 
 
 class CmdStartScanResponse(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
-    def id() -> bytes:
-        return b"F"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_START_SCAN
 
 
 class CmdStopScanRequest(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("reserved", c_uint16)]
 
-    def id() -> bytes:
-        return b"G"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_STOP_SCAN
 
 
 class CmdStopScanResponse(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
-    def id() -> bytes:
-        return b"G"
-
-
-class CmdEraseSDRequest(MidgeBadgeCommand):
-    _pack_ = 1
-    _fields_ = [("reserved", c_uint16)]
-
-    def id() -> bytes:
-        return b"H"
-
-
-class CmdEraseSDResponse(MidgeBadgeCommand):
-    _pack_ = 1
-    _fields_ = [("status_code", c_int32)]
-
-    def id() -> bytes:
-        return b"H"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_STOP_SCAN
 
 
 class CmdStartIMURequest(MidgeBadgeCommand):
@@ -243,32 +251,122 @@ class CmdStartIMURequest(MidgeBadgeCommand):
         ("datarate", c_uint16),
     ]
 
-    def id() -> bytes:
-        return b"I"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_START_IMU
 
 
 class CmdStartIMUResponse(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
-    def id() -> bytes:
-        return b"I"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_START_IMU
 
 
 class CmdStopIMURequest(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("reserved", c_uint16)]
 
-    def id() -> bytes:
-        return b"J"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_STOP_IMU
 
 
 class CmdStopIMUResponse(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
-    def id() -> bytes:
-        return b"J"
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_STOP_IMU
+
+
+class CmdEraseSDRequest(MidgeBadgeCommand):
+    _pack_ = 1
+    _fields_ = [("reserved", c_uint16)]
+
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_ERASE_SD
+
+
+class CmdEraseSDResponse(MidgeBadgeCommand):
+    _pack_ = 1
+    _fields_ = [("status_code", c_int32)]
+
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_ERASE_SD
+
+
+class CmdGetFreeSDSpaceRequest(MidgeBadgeCommand):
+    _pack_ = 1
+    _fields_ = [("reserved", c_uint16)]
+
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_GET_FREE_SD_SPACE
+
+
+class CmdGetFreeSDSpaceResponse(MidgeBadgeCommand):
+    _pack_ = 1
+    _fields_ = [("free_bytes", c_uint32)]
+
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_GET_FREE_SD_SPACE
+
+
+class CmdGetFileIndexInfoRequest(MidgeBadgeCommand):
+    _pack_ = 1
+    _fields_ = [("index", c_int16)]
+
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_GET_FILE_INDEX_INFO
+
+
+class CmdGetFileIndexInfoResponse(MidgeBadgeCommand):
+    _pack_ = 1
+    _fields_ = [
+        ("size_bytes", c_uint32),
+        ("index", c_int16),
+        ("path", c_uint8 * INTERFACE_MAX_FILE_NAME),
+    ]
+
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_GET_FILE_INDEX_INFO
+
+
+class CmdGetFileCRC32Request(MidgeBadgeCommand):
+    _pack_ = 1
+    _fields_ = [("path", c_uint8 * INTERFACE_MAX_FILE_NAME)]
+
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_GET_FILE_CRC32
+
+
+class CmdGetFileCRC32Response(MidgeBadgeCommand):
+    _pack_ = 1
+    _fields_ = [("crc32", c_uint32), ("status_code", c_int32)]
+
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_GET_FILE_CRC32
+
+
+class CmdDownloadFileChunkRequest(MidgeBadgeCommand):
+    _pack_ = 1
+    _fields_ = [
+        ("path", c_uint8 * INTERFACE_MAX_FILE_NAME),
+        ("offset", c_uint32),
+    ]
+
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_DOWNLOAD_FILE_CHUNK
+
+
+class CmdDownloadFileChunkResponse(MidgeBadgeCommand):
+    _pack_ = 1
+    _fields_ = [
+        ("data", c_uint8 * (INTERFACE_CMD_DATA_SZ - 4)),
+        ("bytes", c_int16),
+    ]
+
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_DOWNLOAD_FILE_CHUNK
 
 
 # DATA
@@ -280,9 +378,13 @@ CMD_RESPONSES: list[MidgeBadgeCommand] = [
     CmdStopMicResponse,
     CmdStartScanResponse,
     CmdStopScanResponse,
-    CmdEraseSDResponse,
     CmdStartIMUResponse,
     CmdStopIMUResponse,
+    CmdEraseSDResponse,
+    CmdGetFreeSDSpaceResponse,
+    CmdGetFileIndexInfoResponse,
+    CmdGetFileCRC32Response,
+    CmdDownloadFileChunkResponse,
 ]
 
 SOT = b"#"

@@ -14,6 +14,6 @@ fi
 FW_DIR=$FW_DIR
 source ~/zephyrproject/.venv/bin/activate
 # personal zephyr fork to fix anomaly 58 init in the meantime
-export ZEPHYR_BASE=~/fork-zephyr/zephyr
+export ZEPHYR_BASE=~/zephyrproject/zephyr
 export BOARD_ROOT=$FW_DIR
 export BOARD=midge_badge_nrf52

@@ -12,7 +12,8 @@ enum mb_storage_status {
     MB_STORAGE_STATUS_UNINIT = 0,
     MB_STORAGE_STATUS_INIT_OK_INACTIVE = 1,
     MB_STORAGE_STATUS_INIT_OK_ACTIVE = 2,
-    MB_STORAGE_STATUS_INIT_ERR = 3,
+    MB_STORAGE_STATUS_INIT_OK_MISC_OP_ACTIVE = 3,
+    MB_STORAGE_STATUS_INIT_ERR = 4,
 };
 
 enum mb_file_type {
@@ -71,6 +72,8 @@ int storage_write(enum mb_file_type file_type, void* data, size_t size);
 int storage_close(enum mb_file_type file_type);
 
 int cmd_erase_sd(uint8_t* data);
+
+int cmd_get_free_sd_space(uint8_t* data);
 
 int cmd_get_file_index_info(uint8_t* data);
 

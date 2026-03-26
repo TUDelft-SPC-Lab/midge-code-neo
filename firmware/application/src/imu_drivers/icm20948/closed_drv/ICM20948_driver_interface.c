@@ -5,6 +5,10 @@
 
 #include "../storage.h"
 #include "../time_control.h"
+#undef BIT
+#undef NSEC_PER_MSEC
+#undef NSEC_PER_SEC
+#undef MSEC_PER_SEC
 #include "Icm20948.h"
 #include "i2c_shim.h"
 

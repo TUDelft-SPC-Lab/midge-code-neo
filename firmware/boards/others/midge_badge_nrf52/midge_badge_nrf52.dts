@@ -144,7 +144,7 @@
 			disk-name = "SD";
 			status = "okay";
 		};
-		spi-max-frequency = <50000000>; // UHS-1 min
+		spi-max-frequency = <8000000>; // UHS-1 min
 	};
 };
 

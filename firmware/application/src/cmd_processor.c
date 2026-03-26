@@ -21,11 +21,7 @@
 LOG_MODULE_REGISTER(cmd_processor);
 
 struct CustomAdvertisementData advertised_data = {
-    .battery_mv = 0,
-    .active_sensor_bitflags = 0,
-    .badge_assignment = {.u16_all = 0xFFFF}
-};
-
+    .battery_mv = 0, .active_sensor_bitflags = 0, .badge_assignment = {.u16_all = 0xFFFF}};
 
 // ======== Aggregate functionality command implementations ======== //
 
@@ -50,7 +46,7 @@ int cmd_status(uint8_t* data) {
                          : req_data->millis_since_epoch - current_interpolation;
 
     int ret = time_control_update(req_data->millis_since_epoch);
-    if(ret < 0){
+    if (ret < 0) {
         LOG_ERR("Failed to perform the time sync");
     }
 
@@ -76,7 +72,7 @@ int cmd_status(uint8_t* data) {
 }
 
 int cmd_get_fw_version(uint8_t* data) {
-    //struct CmdGetFWVersionRequest* req_data = (struct CmdGetFWVersionRequest*)data;
+    // struct CmdGetFWVersionRequest* req_data = (struct CmdGetFWVersionRequest*)data;
     struct CmdGetFWVersionResponse* resp_data = (struct CmdGetFWVersionResponse*)data;
     LOG_INF("received get fw version message");
     memset(resp_data, 0, sizeof(struct CmdGetFWVersionResponse));
@@ -84,7 +80,6 @@ int cmd_get_fw_version(uint8_t* data) {
     LOG_INF("returning fw version: %s", resp_data->version_str);
     return 0;
 }
-
 
 enum cmd_state { READ_SOT, READ_CMD, READ_DATA, READ_EOT };
 
@@ -96,19 +91,35 @@ struct cmd_processor_lut_entry {
 };
 
 struct cmd_processor_lut_entry commands[] = {
-    {'A', sizeof(struct CmdSetupExperimentRequest), sizeof(struct CmdSetupExperimentResponse), cmd_setup_experiment},
-    {'B', sizeof(struct CmdStatusRequest), sizeof(struct CmdStatusResponse), cmd_status},
-    {'C', sizeof(struct CmdGetFWVersionRequest), sizeof(struct CmdGetFWVersionResponse), cmd_get_fw_version},
-    {'D', sizeof(struct CmdStartMicRequest), sizeof(struct CmdStartMicResponse), cmd_mic_start},
-    {'E', sizeof(struct CmdStopMicRequest), sizeof(struct CmdStopMicResponse), cmd_mic_stop},
-    {'F', sizeof(struct CmdStartScanRequest), sizeof(struct CmdStartScanResponse), cmd_scan_start},
-    {'G', sizeof(struct CmdStopScanRequest), sizeof(struct CmdStopScanResponse), cmd_scan_stop},
-    {'H', sizeof(struct CmdEraseSDRequest), sizeof(struct CmdEraseSDResponse), cmd_erase_sd},
-    {'I', sizeof(struct CmdStartIMURequest), sizeof(struct CmdStartIMUResponse), cmd_start_imu},
-    {'J', sizeof(struct CmdStopIMURequest), sizeof(struct CmdStopIMUResponse), cmd_stop_imu}};
-    // get SD space command missing
-    // file transfer commands missing
-
+    {CMD_ID_SETUP_EXPERIMENT, sizeof(struct CmdSetupExperimentRequest),
+     sizeof(struct CmdSetupExperimentResponse), cmd_setup_experiment},
+    {CMD_ID_STATUS, sizeof(struct CmdStatusRequest), sizeof(struct CmdStatusResponse), cmd_status},
+    {CMD_ID_GET_FW_VERSION, sizeof(struct CmdGetFWVersionRequest),
+     sizeof(struct CmdGetFWVersionResponse), cmd_get_fw_version},
+    {CMD_ID_START_MIC, sizeof(struct CmdStartMicRequest), sizeof(struct CmdStartMicResponse),
+     cmd_mic_start},
+    {CMD_ID_STOP_MIC, sizeof(struct CmdStopMicRequest), sizeof(struct CmdStopMicResponse),
+     cmd_mic_stop},
+    {CMD_ID_START_SCAN, sizeof(struct CmdStartScanRequest), sizeof(struct CmdStartScanResponse),
+     cmd_scan_start},
+    {CMD_ID_STOP_SCAN, sizeof(struct CmdStopScanRequest), sizeof(struct CmdStopScanResponse),
+     cmd_scan_stop},
+    {CMD_ID_START_IMU, sizeof(struct CmdStartIMURequest), sizeof(struct CmdStartIMUResponse),
+     cmd_start_imu},
+    {CMD_ID_STOP_IMU, sizeof(struct CmdStopIMURequest), sizeof(struct CmdStopIMUResponse),
+     cmd_stop_imu},
+    {CMD_ID_ERASE_SD, sizeof(struct CmdEraseSDRequest), sizeof(struct CmdEraseSDResponse),
+     cmd_erase_sd},
+    {CMD_ID_GET_FREE_SD_SPACE, sizeof(struct CmdGetFreeSDSpaceRequest),
+     sizeof(struct CmdGetFreeSDSpaceResponse), cmd_get_free_sd_space},
+    {CMD_ID_GET_FILE_INDEX_INFO, sizeof(struct CmdGetFileIndexInfoRequest),
+     sizeof(struct CmdGetFileIndexInfoResponse), cmd_get_file_index_info},
+    {CMD_ID_GET_FILE_CRC32, sizeof(struct CmdGetFileCRC32Request),
+     sizeof(struct CmdGetFileCRC32Response), cmd_get_file_crc32},
+    {CMD_ID_DOWNLOAD_FILE_CHUNK, sizeof(struct CmdDownloadFileChunkRequest),
+     sizeof(struct CmdDownloadFileChunkResponse), cmd_download_file_chunk}};
+// get SD space command missing
+// file transfer commands missing
 
 #define COMMAND_COUNT ARRAY_SIZE(commands)
 
@@ -124,15 +135,14 @@ static void received(struct bt_conn* conn, const void* data, uint16_t len, void*
     static int cmd_data_idx = 0;                      // currently read data
     static int cmd_req_data_size = 0;                 // how much data to read
     static int cmd_resp_data_size = 0;                // how much data to send
-    int (*execute_cmd)(uint8_t* data) = invalid_cmd;  // ptr to command function
+    static int (*execute_cmd)(uint8_t* data) = invalid_cmd;  // ptr to command function
 
     // Get the negotiated MTU for the connection to determine how much data we
     // can send in one chunk
-    int mtu = bt_gatt_get_mtu(conn) - 3; // Subtract ATT header size
+    int mtu = bt_gatt_get_mtu(conn) - 3;  // Subtract ATT header size
     ARG_UNUSED(ctx);
-    printk("%s() - Len: %d, Message: %.*s\n", __func__, len, len, (char*)data);
+    LOG_DBG("%s() - Len: %d, Message: %.*s\n", __func__, len, len, (char*)data);
     const uint8_t* rx_data = (const uint8_t*)data;
-
     // State Machine
     for (int i = 0; i < len; i++) {
         uint8_t c = rx_data[i];
@@ -158,10 +168,16 @@ static void received(struct bt_conn* conn, const void* data, uint16_t len, void*
                         break;
                     }
                 }
-
+                if (execute_cmd == invalid_cmd) {
+                    LOG_ERR("Received command ID %c does not match any valid command", c);
+                }
                 if (!cmd_is_valid) {
                     // invalid command, go back to read SOT
                     rx_cmd_state = READ_SOT;
+                    LOG_ERR("Received invalid command ID: %c", c);
+                }else{
+                    LOG_DBG("Received valid commad ID: %c, expecting %d bytes of data", c,
+                            cmd_req_data_size - 2);
                 }
 
                 break;
@@ -182,16 +198,15 @@ static void received(struct bt_conn* conn, const void* data, uint16_t len, void*
                     execute_cmd(&cmd_data[2]);
                     cmd_data[cmd_resp_data_size] = CMD_PROCESSOR_EOT;
                     // total message size: resp data (includes EOT and cmd_id) + SOT
-
-                    //bt_nus_send(conn, cmd_data, cmd_resp_data_size + 1);
-
-                    //Send data in chunks of 20 bytes
+                    // Send data in chunks of 20 bytes
                     int total_bytes = cmd_resp_data_size + 1;
                     int bytes_sent = 0;
                     while (bytes_sent < total_bytes) {
-                        int chunk_size = (total_bytes - bytes_sent) > mtu ? mtu : (total_bytes - bytes_sent);
-                        int chunk_stat = bt_nus_send(conn, (void*)&cmd_data[bytes_sent], chunk_size);
-                        if (chunk_stat  == -ENOMEM || chunk_stat == -EAGAIN) {
+                        int chunk_size =
+                            (total_bytes - bytes_sent) > mtu ? mtu : (total_bytes - bytes_sent);
+                        int chunk_stat =
+                            bt_nus_send(conn, (void*)&cmd_data[bytes_sent], chunk_size);
+                        if (chunk_stat == -ENOMEM || chunk_stat == -EAGAIN) {
                             k_msleep(1);
                             continue;
                         } else if (chunk_stat < 0) {
@@ -234,8 +249,7 @@ static struct bt_data sd[] = {
 K_THREAD_STACK_DEFINE(advertised_data_thread_stack, ADVERTISED_DATA_THREAD_STACK_SIZE);
 static struct k_thread advertised_data_thread_data;
 
-static void adv_data_update(void)
-{
+static void adv_data_update(void) {
     int16_t mv = 0;
     if (battery_charge_get_mv(&mv) == 0) {
         advertised_data.battery_mv = (uint16_t)mv;
@@ -244,8 +258,7 @@ static void adv_data_update(void)
     bt_le_adv_update_data(ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
 }
 
-static void advertised_data_thread(void *arg1, void *arg2, void *arg3)
-{
+static void advertised_data_thread(void* arg1, void* arg2, void* arg3) {
     ARG_UNUSED(arg1);
     ARG_UNUSED(arg2);
     ARG_UNUSED(arg3);
@@ -266,8 +279,7 @@ struct bt_nus_cb nus_listener = {
     .received = received,
 };
 
-
-static void ble_conn_recycled_cb(){
+static void ble_conn_recycled_cb() {
     // move to work queue
     int err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_1, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
     if (err) {
@@ -275,16 +287,16 @@ static void ble_conn_recycled_cb(){
     }
 }
 
-static void ble_conn_disconnected_cb(struct bt_conn* conn, uint8_t err){
+static void ble_conn_disconnected_cb(struct bt_conn* conn, uint8_t err) {
     (void)err;
     (void)conn;
-    err = bt_le_adv_stop(); // stop non connectable advertising
+    err = bt_le_adv_stop();  // stop non connectable advertising
     if (err) {
         LOG_ERR("Connection failure %d", err);
     }
 }
 
-static void ble_conn_connected_cb(struct bt_conn* conn, uint8_t err){
+static void ble_conn_connected_cb(struct bt_conn* conn, uint8_t err) {
     (void)err;
     (void)conn;
     // start non connectable advertising to allow scanning
@@ -294,11 +306,9 @@ static void ble_conn_connected_cb(struct bt_conn* conn, uint8_t err){
     }
 }
 
-struct bt_conn_cb conn_cb = {
-    .recycled = ble_conn_recycled_cb,
-    .disconnected = ble_conn_disconnected_cb,
-    .connected = ble_conn_connected_cb
-};
+struct bt_conn_cb conn_cb = {.recycled = ble_conn_recycled_cb,
+                             .disconnected = ble_conn_disconnected_cb,
+                             .connected = ble_conn_connected_cb};
 
 int cmd_processor_init(void) {
     int err;
@@ -320,16 +330,9 @@ int cmd_processor_init(void) {
         return err;
     }
 
-        k_thread_create(&advertised_data_thread_data,
-                        advertised_data_thread_stack,
-                        K_THREAD_STACK_SIZEOF(advertised_data_thread_stack),
-                        advertised_data_thread,
-                        NULL,
-                        NULL,
-                        NULL,
-                        ADVERTISED_DATA_THREAD_PRIORITY,
-                        0,
-                        K_SECONDS(2));
+    k_thread_create(&advertised_data_thread_data, advertised_data_thread_stack,
+                    K_THREAD_STACK_SIZEOF(advertised_data_thread_stack), advertised_data_thread,
+                    NULL, NULL, NULL, ADVERTISED_DATA_THREAD_PRIORITY, 0, K_SECONDS(2));
     LOG_INF("Initialization complete");
     return 0;
 }
