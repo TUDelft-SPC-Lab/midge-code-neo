@@ -4,7 +4,7 @@
 #include "midge_badge_nrf52-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/sensor/icm20948.h>
-#define CLOSED_SOURCE_ICM20948 0
+#define CLOSED_SOURCE_ICM20948 1
 /**
  * LED_IND PO.03 pin 19
  * SCL     PO.02 pin 15

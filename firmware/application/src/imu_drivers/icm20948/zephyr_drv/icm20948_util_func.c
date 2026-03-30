@@ -76,9 +76,9 @@ static uint16_t mag_mode_to_data_rate(uint8_t val) {
         case ICM20948_DT_MAG_MODE_DISABLED:
             return 0;
         case ICM20948_DT_MAG_MODE_10HZ:
-            return 25;
+            return 10;
         case ICM20948_DT_MAG_MODE_20HZ:
-            return 25;
+            return 20;
         case ICM20948_DT_MAG_MODE_50HZ:
             return 50;
         case ICM20948_DT_MAG_MODE_100HZ:
@@ -88,7 +88,7 @@ static uint16_t mag_mode_to_data_rate(uint8_t val) {
     }
 }
 
-bool check_cfg_matches(const struct device* dev, struct ImuConfig* config) {
+bool check_cfg_matches(const struct device* dev, struct imu_config* config) {
     const struct icm20948_config* cfg = (const struct icm20948_config*)dev->config;
     uint16_t mag_datarate = mag_mode_to_data_rate(cfg->mag_mode);
     uint16_t gyro_fsr = gyro_enum_to_fsr(cfg->gyro_fs);

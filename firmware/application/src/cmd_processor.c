@@ -76,7 +76,8 @@ int cmd_get_fw_version(uint8_t* data) {
     struct cmd_get_fw_version_response* resp_data = (struct cmd_get_fw_version_response*)data;
     LOG_INF("received get fw version message");
     memset(resp_data, 0, sizeof(struct cmd_get_fw_version_response));
-    strcpy((char*)resp_data->version_str, FW_VERSION);
+    // null char at the end is enforced with the memset call and the size limit -1
+    strncpy((char*)resp_data->version_str, FW_VERSION, sizeof(resp_data->version_str) - 1);
     LOG_INF("returning fw version: %s", resp_data->version_str);
     return 0;
 }

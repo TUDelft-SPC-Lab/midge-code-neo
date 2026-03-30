@@ -12,12 +12,12 @@
 
 LOG_MODULE_REGISTER(imu);
 
-uint8_t imu_sensor_state = IMU_SENSOR_STATE_DISABLED;
+static uint8_t imu_sensor_state = IMU_SENSOR_STATE_DISABLED;
 
 uint8_t imu_sensor_get_status() { return imu_sensor_state; }
 
 int imu_sensor_init() {
-    int ret = imu_driver_interface.init();
+    int ret = imu_drv_api.init();
     if (ret != 0) {
         imu_sensor_state = IMU_SENSOR_STATE_ERR;
         LOG_ERR("Failed to initialize IMU driver: %d", ret);
@@ -29,20 +29,20 @@ int imu_sensor_init() {
 }
 
 int imu_sensor_start(int sample_iter, uint16_t acc_fsr, uint16_t gyr_fsr, uint16_t datarate) {
-    struct ImuConfig config = {
+    struct imu_config config = {
         .acc_fsr = acc_fsr,
         .gyr_fsr = gyr_fsr,
         .datarate = datarate,
     };
     // set config
-    int ret = imu_driver_interface.set_config(&config);
+    int ret = imu_drv_api.set_config(&config);
     if (ret != 0) {
         LOG_ERR("Failed to set IMU config: %d", ret);
         return ret;
     }
 
     // start sampling
-    ret = imu_driver_interface.start(sample_iter);
+    ret = imu_drv_api.start(sample_iter);
     if (ret != 0) {
         LOG_ERR("Failed to start IMU sampling: %d", ret);
         imu_sensor_state = IMU_SENSOR_STATE_ERR;
@@ -54,7 +54,7 @@ int imu_sensor_start(int sample_iter, uint16_t acc_fsr, uint16_t gyr_fsr, uint16
 }
 
 int imu_sensor_stop() {
-    int ret = imu_driver_interface.stop();
+    int ret = imu_drv_api.stop();
     if (ret != 0) {
         LOG_ERR("Failed to stop IMU sampling: %d", ret);
         imu_sensor_state = IMU_SENSOR_STATE_ERR;

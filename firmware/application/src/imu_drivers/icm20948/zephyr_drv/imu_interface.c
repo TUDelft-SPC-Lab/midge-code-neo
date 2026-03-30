@@ -1,5 +1,6 @@
 #include "imu_interface.h"
 
+#include <string.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/kernel.h>
@@ -15,7 +16,7 @@ const struct device* const imu_icm20948 = DEVICE_DT_GET_ONE(invensense_icm20948)
 
 #define BUFFERED_SAMPLES 16
 
-enum SUPPORTED_SENSORS {
+enum supported_sensors {
     SENSOR_ACCEL = 0,
     SENSOR_GYRO = 1,
     SENSOR_MAGNETO = 2,
@@ -23,24 +24,34 @@ enum SUPPORTED_SENSORS {
 
 #define SENSOR_CHANNELS 3  // accel, gyro, mag
 
-struct ImuSample imu_buffer[SENSOR_CHANNELS][2][BUFFERED_SAMPLES];
+static struct imu_sample imu_buffer[SENSOR_CHANNELS][2][BUFFERED_SAMPLES];
 
-struct ImuWriteSamplesWork {
+static struct ImuWriteSamplesWork {
     struct k_work work;
+    struct k_sem done;
     int buffer_index;
-};
+} wr_samples_ctx;
 
 static void imu_write_samples_work_handler(struct k_work* work) {
     struct ImuWriteSamplesWork* imu_work = CONTAINER_OF(work, struct ImuWriteSamplesWork, work);
     int buffer_index = imu_work->buffer_index;
-    size_t data_sz = sizeof(struct ImuSample) * BUFFERED_SAMPLES;
+    size_t sz = sizeof(struct imu_sample) * BUFFERED_SAMPLES;
     // write samples from imu_buffer[0][buffer_index], imu_buffer[1][buffer_index],
     // imu_buffer[2][buffer_index] to storage
-    for (int i = 0; i < BUFFERED_SAMPLES; i++) {
-        storage_write(FILE_TYPE_ACCEL, &imu_buffer[SENSOR_ACCEL][buffer_index], data_sz);
-        storage_write(FILE_TYPE_GYRO, &imu_buffer[SENSOR_GYRO][buffer_index], data_sz);
-        storage_write(FILE_TYPE_MAGNETO, &imu_buffer[SENSOR_MAGNETO][buffer_index], data_sz);
+    int ret_accel = storage_write(FILE_TYPE_ACCEL, imu_buffer[SENSOR_ACCEL][buffer_index], sz);
+    int ret_gyro = storage_write(FILE_TYPE_GYRO, imu_buffer[SENSOR_GYRO][buffer_index], sz);
+    int ret_magn = storage_write(FILE_TYPE_MAGNETO, imu_buffer[SENSOR_MAGNETO][buffer_index], sz);
+    if (ret_accel < 0 || ret_gyro < 0 || ret_magn < 0) {
+        LOG_ERR(
+            "Failed to write imu samples, stopping sampling. accel status: %d, gyro status: %d, "
+            "magn status: %d",
+            ret_accel, ret_gyro, ret_magn);
+        imu_drv_api.stop();
+
+    } else {
+        LOG_DBG("Successfully wrote imu samples, buffer index: %d", buffer_index);
     }
+    k_sem_give(&imu_work->done);
 }
 
 struct {
@@ -77,19 +88,19 @@ static int process_icm20948(const struct device* dev) {
         LOG_ERR("sample fetch/get failed: %d", rc);
     }
 
-    struct ImuSample accel_sample = {
+    struct imu_sample accel_sample = {
         .timestamp = timestamp,
         .axis = {.x = sensor_value_to_float(&accel[0]),
                  .y = sensor_value_to_float(&accel[1]),
                  .z = sensor_value_to_float(&accel[2])},
     };
-    struct ImuSample gyro_sample = {
+    struct imu_sample gyro_sample = {
         .timestamp = timestamp,
         .axis = {.x = sensor_value_to_float(&gyro[0]),
                  .y = sensor_value_to_float(&gyro[1]),
                  .z = sensor_value_to_float(&gyro[2])},
     };
-    struct ImuSample magn_sample = {
+    struct imu_sample magn_sample = {
         .timestamp = timestamp,
         .axis = {.x = sensor_value_to_float(&magn[0]),
                  .y = sensor_value_to_float(&magn[1]),
@@ -106,15 +117,22 @@ static int process_icm20948(const struct device* dev) {
     // select next place to write in buffer
     sampling_state.current_sample++;
     if (sampling_state.current_sample >= BUFFERED_SAMPLES) {
-        // buffer is full, submit work to write it and switch buffer index
-        static struct ImuWriteSamplesWork imu_work;
-        k_work_init(&imu_work.work, imu_write_samples_work_handler);
-        imu_work.buffer_index = sampling_state.buffer_index;
-        k_work_submit(&imu_work.work);
-
-        // reset state, switch buffer index
+        // reset counter
         sampling_state.current_sample = 0;
-        sampling_state.buffer_index = (sampling_state.buffer_index + 1) % 2;
+        // check buffer write is done before submitting new work.
+        rc = k_sem_take(&wr_samples_ctx.done, K_NO_WAIT);
+        if (rc != 0) {
+            LOG_ERR("Previous sample write not completed yet, dropping samples, error: %d", rc);
+        } else {
+            // buffer is full, submit work to write it and switch buffer index
+            k_work_init(&wr_samples_ctx.work, imu_write_samples_work_handler);
+            k_sem_init(&wr_samples_ctx.done, 0, 1);
+            wr_samples_ctx.buffer_index = sampling_state.buffer_index;
+            k_work_submit(&wr_samples_ctx.work);
+
+            // switch buffer index
+            sampling_state.buffer_index = (sampling_state.buffer_index + 1) % 2;
+        }
     }
 
     return rc;
@@ -131,18 +149,18 @@ static void handle_icm20948_drdy(const struct device* dev, const struct sensor_t
     }
 }
 
-int init(void) {
+static int init(void) {
     if (!device_is_ready(imu_icm20948)) {
         LOG_ERR("Device %s is not ready", imu_icm20948->name);
-        return 0;
+        return -ENODEV;
     }
     return 0;
 }
 
-static int set_config(struct ImuConfig* config) {
+static int set_config(struct imu_config* config) {
     int rc = 0;
     // magnetometer data rate cannot be changed in runtime in this driver yet.
-    /* Not yet supported. Rememer this use SI units
+    /* Not yet supported. Remember this use SI units
     rc = sensor_attr_set(imu_icm20948, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE,
     &config->acc_fsr); if (rc != 0) { LOG_ERR("Failed to set accel fsr: %d", rc); return rc;
     }
@@ -152,7 +170,6 @@ static int set_config(struct ImuConfig* config) {
     */
     if (check_cfg_matches(imu_icm20948, config)) {
         LOG_INF("Config matches existing settings, no changes made");
-        return 0;
     } else {
         LOG_ERR(
             "Config does not match static settings (Driver does not support these runtime "
@@ -174,8 +191,8 @@ static int set_config(struct ImuConfig* config) {
                          &datarate_val);
     if (rc != 0) {
         LOG_ERR("Failed to set gyro datarate: %d", rc);
-        return rc;
     }
+    return rc;
 }
 
 static int start(int sample_iter) {
@@ -191,16 +208,19 @@ static int start(int sample_iter) {
         LOG_ERR("Error initializing IMU sample files acc: %d - gyro: %d - magneto: %d", accel_ret,
                 gyro_ret, magneto_ret);
         if (accel_ret == 0) {
-            storage_close(FILE_TYPE_ACCEL);
+            (void)storage_close(FILE_TYPE_ACCEL);
         }
         if (gyro_ret == 0) {
-            storage_close(FILE_TYPE_GYRO);
+            (void)storage_close(FILE_TYPE_GYRO);
         }
         if (magneto_ret == 0) {
-            storage_close(FILE_TYPE_MAGNETO);
+            (void)storage_close(FILE_TYPE_MAGNETO);
         }
         return -EAGAIN;
     }
+
+    // required for check when switching buffers in process_icm20948
+    k_sem_init(&wr_samples_ctx.done, 1, 1);
 
     // start sampling
     trigger = (struct sensor_trigger){
@@ -208,7 +228,14 @@ static int start(int sample_iter) {
         .chan = SENSOR_CHAN_ALL,
     };
 
-    return sensor_trigger_set(imu_icm20948, &trigger, handle_icm20948_drdy);
+    int ret = sensor_trigger_set(imu_icm20948, &trigger, handle_icm20948_drdy);
+    if (ret != 0) {
+        LOG_ERR("Failed to set trigger: %d", ret);
+        (void)storage_close(FILE_TYPE_ACCEL);
+        (void)storage_close(FILE_TYPE_GYRO);
+        (void)storage_close(FILE_TYPE_MAGNETO);
+    }
+    return ret;
 }
 
 static int stop() {
@@ -216,14 +243,14 @@ static int stop() {
     int ret = sensor_trigger_set(imu_icm20948, &trigger, NULL);  // icm20948_disable_sensors();
     // close imu files
     if (ret == 0) {
-        storage_close(FILE_TYPE_ACCEL);
-        storage_close(FILE_TYPE_GYRO);
-        storage_close(FILE_TYPE_MAGNETO);
+        (void)storage_close(FILE_TYPE_ACCEL);
+        (void)storage_close(FILE_TYPE_GYRO);
+        (void)storage_close(FILE_TYPE_MAGNETO);
     }
     return ret;
 }
 
-struct ImuDriverInterface imu_driver_interface = {
+struct imu_driver_interface imu_drv_api = {
     .init = init,
     .set_config = set_config,
     .start = start,

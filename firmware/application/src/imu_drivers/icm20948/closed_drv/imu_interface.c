@@ -8,11 +8,11 @@
 
 LOG_MODULE_REGISTER(imu_interface);
 
-struct ImuSample imu_buffer[MAX_IMU_SOURCES][2][IMU_BUFFER_SIZE];
+struct imu_sample imu_buffer[MAX_IMU_SOURCES][2][IMU_BUFFER_SIZE];
 
 int imu_driver_init() { return icm20948_init(); }
 
-int imu_driver_set_config(struct ImuConfig* config) {
+int imu_driver_set_config(struct imu_config* config) {
     int ret = 0;
     ret |= icm20948_set_fsr(config->acc_fsr, config->gyr_fsr);
     ret |= icm20948_set_datarate(config->datarate);
@@ -59,7 +59,7 @@ int imu_driver_stop() {
     return ret;
 }
 
-struct ImuDriverInterface imu_driver_interface = {
+struct imu_driver_interface imu_drv_api = {
     .init = imu_driver_init,
     .set_config = imu_driver_set_config,
     .start = imu_driver_start,

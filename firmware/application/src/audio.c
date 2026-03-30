@@ -370,8 +370,8 @@ int cmd_mic_start(uint8_t* data) {
 }
 
 int cmd_mic_stop(uint8_t* data) {
-    // struct cmd_start_mic_request* req_data = (struct cmd_start_mic_request*)data;
-    struct cmd_start_mic_response* resp_data = (struct cmd_start_mic_response*)data;
+    // struct cmd_stop_mic_request* req_data = (struct cmd_stop_mic_request*)data;
+    struct cmd_stop_mic_response* resp_data = (struct cmd_stop_mic_response*)data;
     int ret = audio_sensor_stop();
     resp_data->status_code = ret;
     return ret;
