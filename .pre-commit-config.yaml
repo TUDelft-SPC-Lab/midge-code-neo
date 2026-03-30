@@ -36,10 +36,18 @@ repos:
         exclude: |
           (?x)(
               ^.copier-answers.yml|
-              ^.pre-commit-config.yaml
+              ^.pre-commit-config.yaml|
+              ^firmware/.clang-format
           )
 
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: 0.9.26
     hooks:
       - id: uv-lock
+
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v22.1.2
+    hooks:
+    - id: clang-format
+      types_or: [c++, c]
+      args: [-style=file:firmware/.clang-format]

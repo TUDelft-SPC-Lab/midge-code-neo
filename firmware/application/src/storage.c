@@ -448,16 +448,16 @@ int storage_close(enum mb_file_type file_type) {
 // ======= Cmd Processor-facing API ====== //
 
 int cmd_erase_sd(uint8_t* data) {
-    // struct CmdEraseSDRequest* req_data = (struct CmdEraseSDRequest*)data;
-    struct CmdEraseSDResponse* resp_data = (struct CmdEraseSDResponse*)data;
+    // struct cmd_erase_sd_request* req_data = (struct cmd_erase_sd_request*)data;
+    struct cmd_erase_sd_response* resp_data = (struct cmd_erase_sd_response*)data;
     int ret = storage_erase(DISK_MOUNT_POINT);
     resp_data->status_code = ret;
     return ret;
 }
 
 int cmd_get_free_sd_space(uint8_t* data) {
-    // struct CmdGetFreeSDSpaceRequest* req_data = (struct CmdGetFreeSDSpaceRequest*)data;
-    struct CmdGetFreeSDSpaceResponse* resp_data = (struct CmdGetFreeSDSpaceResponse*)data;
+    // struct cmd_get_free_sd_space_request* req_data = (struct cmd_get_free_sd_space_request*)data;
+    struct cmd_get_free_sd_space_response* resp_data = (struct cmd_get_free_sd_space_response*)data;
     struct fs_statvfs stat;
     int res = fs_statvfs(mp.mnt_point, &stat);
     if (res < 0) {
@@ -470,13 +470,13 @@ int cmd_get_free_sd_space(uint8_t* data) {
 }
 
 struct GetFileNameFromIndexContext {
-    struct CmdGetFileIndexInfoResponse* resp_data;
+    struct cmd_get_file_index_info_response* resp_data;
     bool found;
 };
 
 static int get_file_name_from_index(char* path, int16_t index, void* context) {
     struct GetFileNameFromIndexContext* ctx = (struct GetFileNameFromIndexContext*)context;
-    struct CmdGetFileIndexInfoResponse* resp_data = ctx->resp_data;
+    struct cmd_get_file_index_info_response* resp_data = ctx->resp_data;
 
     if (index == resp_data->index) {
         ctx->found = true;
@@ -499,10 +499,12 @@ static int get_file_name_from_index(char* path, int16_t index, void* context) {
 }
 
 int cmd_get_file_index_info(uint8_t* data) {
-    struct CmdGetFileIndexInfoRequest* req_data = (struct CmdGetFileIndexInfoRequest*)data;
-    struct CmdGetFileIndexInfoResponse* resp_data = (struct CmdGetFileIndexInfoResponse*)data;
+    struct cmd_get_file_index_info_request* req_data =
+        (struct cmd_get_file_index_info_request*)data;
+    struct cmd_get_file_index_info_response* resp_data =
+        (struct cmd_get_file_index_info_response*)data;
     int16_t index = req_data->index;
-    memset(resp_data, 0, sizeof(struct CmdGetFileIndexInfoResponse));
+    memset(resp_data, 0, sizeof(struct cmd_get_file_index_info_response));
     resp_data->index = index;
     struct GetFileNameFromIndexContext context = {.resp_data = resp_data, .found = false};
 
@@ -518,8 +520,8 @@ int cmd_get_file_index_info(uint8_t* data) {
 }
 
 int cmd_get_file_crc32(uint8_t* data) {
-    struct CmdGetFileCRC32Request* req_data = (struct CmdGetFileCRC32Request*)data;
-    struct CmdGetFileCRC32Response* resp_data = (struct CmdGetFileCRC32Response*)data;
+    struct cmd_get_file_crc32_request* req_data = (struct cmd_get_file_crc32_request*)data;
+    struct cmd_get_file_crc32_response* resp_data = (struct cmd_get_file_crc32_response*)data;
     req_data->path[INTERFACE_MAX_FILE_NAME - 1] = '\0';  // ensure null termination
     struct fs_file_t file;
     fs_file_t_init(&file);
@@ -557,8 +559,10 @@ int cmd_get_file_crc32(uint8_t* data) {
 // add guard
 static struct fs_file_t file_for_chunk_download;
 int cmd_download_file_chunk(uint8_t* data) {
-    struct CmdDownloadFileChunkRequest* req_data = (struct CmdDownloadFileChunkRequest*)data;
-    struct CmdDownloadFileChunkResponse* resp_data = (struct CmdDownloadFileChunkResponse*)data;
+    struct cmd_download_file_chunk_request* req_data =
+        (struct cmd_download_file_chunk_request*)data;
+    struct cmd_download_file_chunk_response* resp_data =
+        (struct cmd_download_file_chunk_response*)data;
     req_data->path[INTERFACE_MAX_FILE_NAME - 1] = '\0';  // ensure null termination
     static bool opened_file_for_download = false;
     int res = 0;
@@ -585,7 +589,6 @@ int cmd_download_file_chunk(uint8_t* data) {
         return -EPERM;
     }
 
-
     off_t offset = req_data->offset;
     LOG_DBG("opened file %s to download chunk at offset %ld", req_data->path, offset);
 
@@ -603,7 +606,8 @@ int cmd_download_file_chunk(uint8_t* data) {
         if (res < 0) {
             LOG_ERR("error reading file %s to download chunk, err %d", req_data->path, res);
         }
-        LOG_DBG("read chunk from file %s at offset %ld, bytes read %d", req_data->path, offset, res);
+        LOG_DBG("read chunk from file %s at offset %ld, bytes read %d", req_data->path, offset,
+                res);
     } while (0);
 
     if (res <= 0) {

@@ -3,7 +3,6 @@
 
 #include <inttypes.h>
 
-
 int battery_charge_init();
 
 int battery_charge_get_mv(int16_t* val_mv);

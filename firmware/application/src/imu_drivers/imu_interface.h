@@ -16,10 +16,10 @@ struct __attribute__((packed)) Imu3AxisSample {
 };
 
 struct __attribute__((packed)) ImuQuaternionSample {
-    float x; // x*sin(theta/2)
-    float y; // y*sin(theta/2)
-    float z; // z*sin(theta/2)
-    float w; // cos(theta/2)
+    float x;  // x*sin(theta/2)
+    float y;  // y*sin(theta/2)
+    float z;  // z*sin(theta/2)
+    float w;  // cos(theta/2)
 };
 
 struct ImuSample {
@@ -27,7 +27,7 @@ struct ImuSample {
     union {
         struct Imu3AxisSample axis;  // acc, gyro, mag
         float axis_data[3];
-        struct ImuQuaternionSample quat; // rotation vector
+        struct ImuQuaternionSample quat;  // rotation vector
         float quat_data[4];
     };
 };

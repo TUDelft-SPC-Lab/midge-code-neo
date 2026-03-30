@@ -30,9 +30,9 @@ LOG_MODULE_REGISTER(mb_audio);
 #define BLOCK_COUNT 5
 
 struct k_mem_slab mem_slab;
-char mem_slab_buffer[BLOCK_COUNT*MAX_BLOCK_SIZE] __aligned(4);
+char mem_slab_buffer[BLOCK_COUNT * MAX_BLOCK_SIZE] __aligned(4);
 
-//K_MEM_SLAB_DEFINE_STATIC(mem_slab, MAX_BLOCK_SIZE, BLOCK_COUNT, 4);
+// K_MEM_SLAB_DEFINE_STATIC(mem_slab, MAX_BLOCK_SIZE, BLOCK_COUNT, 4);
 
 #define HIGH_SAMPLE_RATE MAX_SAMPLE_RATE
 #define LOW_SAMPLE_RATE_DECIMATION 16
@@ -63,7 +63,7 @@ static struct {
     uint16_t sample_iter;
 } sensor_data = {.state = AUDIO_SENSOR_STATE_DISABLED, .sample_iter = 0, .audio_config = {}};
 
-static int write_metadata(struct AudioMetaData* metadata) {
+static int write_metadata(struct audio_meta_data* metadata) {
     char buffer[128];
     int len = snprintf(buffer, sizeof(buffer), "%" PRIu64 ", %d,%d,%d,%d\n", metadata->timestamp_ms,
                        metadata->status_code, metadata->event_type, metadata->frequency_hz,
@@ -85,7 +85,7 @@ static int write_metadata(struct AudioMetaData* metadata) {
 
 uint8_t audio_sensor_get_status() { return (uint8_t)sensor_data.state; }
 
-struct AudioSamplingWorkCtx {
+struct audio_sampling_work_ctx {
     struct k_work init_work;
     struct k_sem init_done;
     int init_ret;
@@ -98,7 +98,8 @@ struct AudioSamplingWorkCtx {
 static void audio_sample_process_work_handler(struct k_work* work);
 
 static void audio_init_sampling_work_handler(struct k_work* work) {
-    struct AudioSamplingWorkCtx* ctx = CONTAINER_OF(work, struct AudioSamplingWorkCtx, init_work);
+    struct audio_sampling_work_ctx* ctx =
+        CONTAINER_OF(work, struct audio_sampling_work_ctx, init_work);
     int ret = 0;
     do {
         ret = storage_init_sample_file(FILE_TYPE_AUDIO, sensor_data.sample_iter);
@@ -110,7 +111,7 @@ static void audio_init_sampling_work_handler(struct k_work* work) {
 
         ret = storage_init_sample_file(FILE_TYPE_AUDIO_METADATA, sensor_data.sample_iter);
         char csv_header[] = "timestamp(ms), status, event, freq, channels\n";
-        if (ret == 0){
+        if (ret == 0) {
             ret = storage_write(FILE_TYPE_AUDIO_METADATA, csv_header, sizeof(csv_header));
         }
         if (ret < 0) {
@@ -130,7 +131,7 @@ static void audio_init_sampling_work_handler(struct k_work* work) {
             storage_close(FILE_TYPE_AUDIO_METADATA);
             break;
         } else {
-            struct AudioMetaData metadata = {
+            struct audio_meta_data metadata = {
                 .timestamp_ms = time_control_get_timestamp(),
                 .status_code = 0,
                 .event_type = AUDIO_EVENT_TYPE_TRIGGER_START,
@@ -170,8 +171,8 @@ static void audio_init_sampling_work_handler(struct k_work* work) {
 
 static void audio_sample_process_work_handler(struct k_work* work) {
     struct k_work_delayable* dwork = k_work_delayable_from_work(work);
-    struct AudioSamplingWorkCtx* ctx =
-        CONTAINER_OF(dwork, struct AudioSamplingWorkCtx, process_work);
+    struct audio_sampling_work_ctx* ctx =
+        CONTAINER_OF(dwork, struct audio_sampling_work_ctx, process_work);
 
     void* audio_buffer;
     uint32_t audio_buffer_size;
@@ -183,7 +184,7 @@ static void audio_sample_process_work_handler(struct k_work* work) {
             // error on trigger
             if (ret == -EBUSY || ret == -ENOMSG || ret == -EAGAIN) {
                 LOG_INF("Sample read timeout reached, sample most likely dropped, retriggering\n");
-                struct AudioMetaData metadata = {
+                struct audio_meta_data metadata = {
                     .timestamp_ms = time_control_get_timestamp(),
                     .status_code = ret,
                     .event_type = AUDIO_EVENT_TYPE_TRIGGER_START,
@@ -228,7 +229,7 @@ static void audio_sample_process_work_handler(struct k_work* work) {
             LOG_ERR("trigger stop failed, critical error\n");
             sensor_data.state = AUDIO_SENSOR_STATE_ERR;
         } else {
-            struct AudioMetaData metadata = {
+            struct audio_meta_data metadata = {
                 .timestamp_ms = time_control_get_timestamp(),
                 .status_code = ret,
                 .event_type = AUDIO_EVENT_TYPE_TRIGGER_STOP,
@@ -349,7 +350,7 @@ int audio_sensor_init(void) {
         sensor_data.state = AUDIO_SENSOR_STATE_ERR;
         return -1;
     }
-    if(k_mem_slab_init(&mem_slab, mem_slab_buffer, MAX_BLOCK_SIZE, BLOCK_COUNT)){
+    if (k_mem_slab_init(&mem_slab, mem_slab_buffer, MAX_BLOCK_SIZE, BLOCK_COUNT)) {
         LOG_ERR("Failed to initialize memory slab for audio samples");
         sensor_data.state = AUDIO_SENSOR_STATE_ERR;
         return -1;
@@ -360,17 +361,17 @@ int audio_sensor_init(void) {
 }
 
 int cmd_mic_start(uint8_t* data) {
-    struct CmdStartMicRequest* req_data = (struct CmdStartMicRequest*)data;
+    struct cmd_start_mic_request* req_data = (struct cmd_start_mic_request*)data;
     int ret = audio_sensor_start(req_data->sample_id, req_data->mode);
-    memset(data, 0, sizeof(struct CmdStartMicResponse));
-    struct CmdStartMicResponse* resp_data = (struct CmdStartMicResponse*)data;
+    memset(data, 0, sizeof(struct cmd_start_mic_response));
+    struct cmd_start_mic_response* resp_data = (struct cmd_start_mic_response*)data;
     resp_data->status_code = ret;
     return ret;
 }
 
 int cmd_mic_stop(uint8_t* data) {
-    // struct CmdStartMicRequest* req_data = (struct CmdStartMicRequest*)data;
-    struct CmdStartMicResponse* resp_data = (struct CmdStartMicResponse*)data;
+    // struct cmd_start_mic_request* req_data = (struct cmd_start_mic_request*)data;
+    struct cmd_start_mic_response* resp_data = (struct cmd_start_mic_response*)data;
     int ret = audio_sensor_stop();
     resp_data->status_code = ret;
     return ret;

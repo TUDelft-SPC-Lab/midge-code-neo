@@ -19,7 +19,7 @@ int time_control_init(uint64_t ref_ms) {
     int ret = timeutil_sync_state_update(&sync_state, &instant);
     if (ret < 0) {
         LOG_ERR("Reference clock failed to be updated");
-    }else{
+    } else {
         status = TIME_SYNCED;
     }
     return ret;
@@ -36,7 +36,7 @@ int time_control_update(uint64_t ref_ms) {
 
 uint64_t time_control_get_timestamp() {
     uint64_t ref;
-    if(status == TIME_NOT_SYNCED){
+    if (status == TIME_NOT_SYNCED) {
         LOG_ERR("Need to initialized the time reference first");
     }
     int status = timeutil_sync_ref_from_local(&sync_state, k_uptime_get(), &ref);

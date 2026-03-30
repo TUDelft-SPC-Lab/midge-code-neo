@@ -3,7 +3,7 @@
 
 #include <inttypes.h>
 
-enum ImuSensorState {
+enum imu_sensor_state {
     IMU_SENSOR_STATE_DISABLED = 0,
     IMU_SENSOR_STATE_ACTIVE = 1,
     IMU_SENSOR_STATE_STOP = 2,
@@ -22,4 +22,4 @@ int cmd_start_imu(uint8_t* data);
 
 int cmd_stop_imu(uint8_t* data);
 
-#endif //MBFW_IMU_H
+#endif  // MBFW_IMU_H

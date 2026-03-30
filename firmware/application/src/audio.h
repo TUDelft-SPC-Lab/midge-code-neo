@@ -19,7 +19,7 @@ enum audio_mode {
     AUDIO_MODE_STEREO = 2,
 };
 
-struct AudioMetaData {
+struct audio_meta_data {
     uint64_t timestamp_ms;
     int status_code;
     enum {

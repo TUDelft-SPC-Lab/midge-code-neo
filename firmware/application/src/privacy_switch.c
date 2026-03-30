@@ -81,9 +81,11 @@ int switch_sensor_init() {
 
     gpio_init_callback(&sw_callback_data, sw_pos_changed,
                        BIT(sw_off.pin) | BIT(sw_low.pin) | BIT(sw_high.pin));
-    int add_callback_success = gpio_add_callback(sw_off.port, &sw_callback_data);  // assume the same port
+    int add_callback_success =
+        gpio_add_callback(sw_off.port, &sw_callback_data);  // assume the same port
 
-    if (!gpios_ready || !gpios_config_done || !gpios_irq_config_success || (add_callback_success!=0)) {
+    if (!gpios_ready || !gpios_config_done || !gpios_irq_config_success ||
+        (add_callback_success != 0)) {
         LOG_ERR("Error: Failed during GPIO initialization");
         return -ENXIO;
     }

@@ -1,8 +1,10 @@
-#include "ICM20948_driver_interface.h"
 #include "imu_interface.h"
-#include "storage.h"
-#include "errno.h"
+
 #include <zephyr/logging/log.h>
+
+#include "ICM20948_driver_interface.h"
+#include "errno.h"
+#include "storage.h"
 
 LOG_MODULE_REGISTER(imu_interface);
 
@@ -55,7 +57,6 @@ int imu_driver_stop() {
         storage_close(FILE_TYPE_ROTATION);
     }
     return ret;
-
 }
 
 struct ImuDriverInterface imu_driver_interface = {

@@ -3,11 +3,10 @@
 
 #include <zephyr/kernel.h>
 
-struct SimpleWorkCtx {
+struct simple_work_ctx {
     struct k_work work;
     struct k_sem done;
     int ret;
 };
-
 
 #endif

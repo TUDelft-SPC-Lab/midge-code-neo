@@ -20,14 +20,14 @@
 
 LOG_MODULE_REGISTER(cmd_processor);
 
-struct CustomAdvertisementData advertised_data = {
+struct custom_advertisement_data advertised_data = {
     .battery_mv = 0, .active_sensor_bitflags = 0, .badge_assignment = {.u16_all = 0xFFFF}};
 
 // ======== Aggregate functionality command implementations ======== //
 
 int cmd_setup_experiment(uint8_t* data) {
-    struct CmdSetupExperimentRequest* req_data = (struct CmdSetupExperimentRequest*)data;
-    struct CmdSetupExperimentResponse* resp_data = (struct CmdSetupExperimentResponse*)data;
+    struct cmd_setup_experiment_request* req_data = (struct cmd_setup_experiment_request*)data;
+    struct cmd_setup_experiment_response* resp_data = (struct cmd_setup_experiment_response*)data;
 
     advertised_data.badge_assignment = req_data->badge_assignment;
     int ret = storage_init_experiment(req_data->experiment_id);
@@ -38,7 +38,7 @@ int cmd_setup_experiment(uint8_t* data) {
 
 int cmd_status(uint8_t* data) {
     LOG_INF("received status message");
-    struct CmdStatusRequest* req_data = (struct CmdStatusRequest*)data;
+    struct cmd_status_request* req_data = (struct cmd_status_request*)data;
 
     uint64_t current_interpolation = time_control_get_timestamp();
     uint64_t delta = current_interpolation > req_data->millis_since_epoch
@@ -56,8 +56,8 @@ int cmd_status(uint8_t* data) {
         LOG_ERR("Failed to read battery voltage");
     }
 
-    struct CmdStatusResponse* resp_data = (struct CmdStatusResponse*)data;
-    memset(resp_data, 0, sizeof(struct CmdStatusResponse));
+    struct cmd_status_response* resp_data = (struct cmd_status_response*)data;
+    memset(resp_data, 0, sizeof(struct cmd_status_response));
     resp_data->badge_assignment = advertised_data.badge_assignment;
     resp_data->sync_status = 0;
     resp_data->sync_delta_ms = delta;
@@ -72,10 +72,10 @@ int cmd_status(uint8_t* data) {
 }
 
 int cmd_get_fw_version(uint8_t* data) {
-    // struct CmdGetFWVersionRequest* req_data = (struct CmdGetFWVersionRequest*)data;
-    struct CmdGetFWVersionResponse* resp_data = (struct CmdGetFWVersionResponse*)data;
+    // struct cmd_get_fw_version_request* req_data = (struct cmd_get_fw_version_request*)data;
+    struct cmd_get_fw_version_response* resp_data = (struct cmd_get_fw_version_response*)data;
     LOG_INF("received get fw version message");
-    memset(resp_data, 0, sizeof(struct CmdGetFWVersionResponse));
+    memset(resp_data, 0, sizeof(struct cmd_get_fw_version_response));
     strcpy((char*)resp_data->version_str, FW_VERSION);
     LOG_INF("returning fw version: %s", resp_data->version_str);
     return 0;
@@ -91,33 +91,34 @@ struct cmd_processor_lut_entry {
 };
 
 struct cmd_processor_lut_entry commands[] = {
-    {CMD_ID_SETUP_EXPERIMENT, sizeof(struct CmdSetupExperimentRequest),
-     sizeof(struct CmdSetupExperimentResponse), cmd_setup_experiment},
-    {CMD_ID_STATUS, sizeof(struct CmdStatusRequest), sizeof(struct CmdStatusResponse), cmd_status},
-    {CMD_ID_GET_FW_VERSION, sizeof(struct CmdGetFWVersionRequest),
-     sizeof(struct CmdGetFWVersionResponse), cmd_get_fw_version},
-    {CMD_ID_START_MIC, sizeof(struct CmdStartMicRequest), sizeof(struct CmdStartMicResponse),
+    {CMD_ID_SETUP_EXPERIMENT, sizeof(struct cmd_setup_experiment_request),
+     sizeof(struct cmd_setup_experiment_response), cmd_setup_experiment},
+    {CMD_ID_STATUS, sizeof(struct cmd_status_request), sizeof(struct cmd_status_response),
+     cmd_status},
+    {CMD_ID_GET_FW_VERSION, sizeof(struct cmd_get_fw_version_request),
+     sizeof(struct cmd_get_fw_version_response), cmd_get_fw_version},
+    {CMD_ID_START_MIC, sizeof(struct cmd_start_mic_request), sizeof(struct cmd_start_mic_response),
      cmd_mic_start},
-    {CMD_ID_STOP_MIC, sizeof(struct CmdStopMicRequest), sizeof(struct CmdStopMicResponse),
+    {CMD_ID_STOP_MIC, sizeof(struct cmd_stop_mic_request), sizeof(struct cmd_stop_mic_response),
      cmd_mic_stop},
-    {CMD_ID_START_SCAN, sizeof(struct CmdStartScanRequest), sizeof(struct CmdStartScanResponse),
-     cmd_scan_start},
-    {CMD_ID_STOP_SCAN, sizeof(struct CmdStopScanRequest), sizeof(struct CmdStopScanResponse),
+    {CMD_ID_START_SCAN, sizeof(struct cmd_start_scan_request),
+     sizeof(struct cmd_start_scan_response), cmd_scan_start},
+    {CMD_ID_STOP_SCAN, sizeof(struct cmd_stop_scan_request), sizeof(struct cmd_stop_scan_response),
      cmd_scan_stop},
-    {CMD_ID_START_IMU, sizeof(struct CmdStartIMURequest), sizeof(struct CmdStartIMUResponse),
+    {CMD_ID_START_IMU, sizeof(struct cmd_start_imu_request), sizeof(struct cmd_start_imu_response),
      cmd_start_imu},
-    {CMD_ID_STOP_IMU, sizeof(struct CmdStopIMURequest), sizeof(struct CmdStopIMUResponse),
+    {CMD_ID_STOP_IMU, sizeof(struct cmd_stop_imu_request), sizeof(struct cmd_stop_imu_response),
      cmd_stop_imu},
-    {CMD_ID_ERASE_SD, sizeof(struct CmdEraseSDRequest), sizeof(struct CmdEraseSDResponse),
+    {CMD_ID_ERASE_SD, sizeof(struct cmd_erase_sd_request), sizeof(struct cmd_erase_sd_response),
      cmd_erase_sd},
-    {CMD_ID_GET_FREE_SD_SPACE, sizeof(struct CmdGetFreeSDSpaceRequest),
-     sizeof(struct CmdGetFreeSDSpaceResponse), cmd_get_free_sd_space},
-    {CMD_ID_GET_FILE_INDEX_INFO, sizeof(struct CmdGetFileIndexInfoRequest),
-     sizeof(struct CmdGetFileIndexInfoResponse), cmd_get_file_index_info},
-    {CMD_ID_GET_FILE_CRC32, sizeof(struct CmdGetFileCRC32Request),
-     sizeof(struct CmdGetFileCRC32Response), cmd_get_file_crc32},
-    {CMD_ID_DOWNLOAD_FILE_CHUNK, sizeof(struct CmdDownloadFileChunkRequest),
-     sizeof(struct CmdDownloadFileChunkResponse), cmd_download_file_chunk}};
+    {CMD_ID_GET_FREE_SD_SPACE, sizeof(struct cmd_get_free_sd_space_request),
+     sizeof(struct cmd_get_free_sd_space_response), cmd_get_free_sd_space},
+    {CMD_ID_GET_FILE_INDEX_INFO, sizeof(struct cmd_get_file_index_info_request),
+     sizeof(struct cmd_get_file_index_info_response), cmd_get_file_index_info},
+    {CMD_ID_GET_FILE_CRC32, sizeof(struct cmd_get_file_crc32_request),
+     sizeof(struct cmd_get_file_crc32_response), cmd_get_file_crc32},
+    {CMD_ID_DOWNLOAD_FILE_CHUNK, sizeof(struct cmd_download_file_chunk_request),
+     sizeof(struct cmd_download_file_chunk_response), cmd_download_file_chunk}};
 
 #define COMMAND_COUNT ARRAY_SIZE(commands)
 
@@ -130,9 +131,9 @@ static void received(struct bt_conn* conn, const void* data, uint16_t len, void*
     static enum cmd_state rx_cmd_state = READ_SOT;
     // SOT + CMD_ID + DATA + EOT
     static uint8_t cmd_data[INTERFACE_CMD_SZ];
-    static int cmd_data_idx = 0;                      // currently read data
-    static int cmd_req_data_size = 0;                 // how much data to read
-    static int cmd_resp_data_size = 0;                // how much data to send
+    static int cmd_data_idx = 0;                             // currently read data
+    static int cmd_req_data_size = 0;                        // how much data to read
+    static int cmd_resp_data_size = 0;                       // how much data to send
     static int (*execute_cmd)(uint8_t* data) = invalid_cmd;  // ptr to command function
 
     // Get the negotiated MTU for the connection to determine how much data we
@@ -171,7 +172,7 @@ static void received(struct bt_conn* conn, const void* data, uint16_t len, void*
                     // invalid command, go back to read SOT
                     rx_cmd_state = READ_SOT;
                     LOG_ERR("Received invalid command ID: %c", c);
-                }else{
+                } else {
                     LOG_DBG("Received valid command ID: %c, expecting %d bytes of data", c,
                             cmd_req_data_size - 2);
                 }

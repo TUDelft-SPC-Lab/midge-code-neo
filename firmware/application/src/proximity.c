@@ -27,7 +27,7 @@ struct proximity_sensor_entry {
         int8_t i8;
     } rssi;
     uint8_t mac_address[6];
-    struct CustomAdvertisementData advertised_data;
+    struct custom_advertisement_data advertised_data;
     uint64_t timestamp;
 };
 
@@ -69,8 +69,8 @@ int proximity_sensor_change_config(uint16_t interval, uint16_t window) {
 
 static bool scan_data_parse(struct bt_data* data, void* advertised_data) {
     if (data->type == BT_DATA_MANUFACTURER_DATA &&
-        data->data_len == sizeof(struct CustomAdvertisementData)) {
-        memcpy(advertised_data, data->data, sizeof(struct CustomAdvertisementData));
+        data->data_len == sizeof(struct custom_advertisement_data)) {
+        memcpy(advertised_data, data->data, sizeof(struct custom_advertisement_data));
         return false;  // stop parsing
     } else {
         return true;  // continue parsing
@@ -83,7 +83,7 @@ static bool scan_data_parse(struct bt_data* data, void* advertised_data) {
  * @param work
  */
 static void scan_write_samples_work_handler(struct k_work* work) {
-    struct SimpleWorkCtx* ctx = CONTAINER_OF(work, struct SimpleWorkCtx, work);
+    struct simple_work_ctx* ctx = CONTAINER_OF(work, struct simple_work_ctx, work);
     sensor_data.sample_cnt = 0;
     ctx->ret = storage_write(FILE_TYPE_PROXIMITY, sensor_data.buffered_samples,
                              sizeof(struct proximity_sensor_entry) * BUFFERED_SAMPLES);
@@ -103,7 +103,7 @@ void scan_callback(const bt_addr_le_t* addr, int8_t rssi, uint8_t adv_type,
         bt_data_parse(buf, scan_data_parse, &sample->advertised_data);
         sensor_data.sample_cnt++;
         if (sensor_data.sample_cnt == BUFFERED_SAMPLES) {
-            struct SimpleWorkCtx ctx;
+            struct simple_work_ctx ctx;
             k_work_init(&ctx.work, scan_write_samples_work_handler);
             k_sem_init(&ctx.done, 0, 1);
             k_work_submit(&ctx.work);
@@ -158,7 +158,7 @@ static void proximity_sensor_start_work_handler(struct k_work* work) {
 }
 
 void proximity_sensor_stop_work_handler(struct k_work* work) {
-    struct SimpleWorkCtx* ctx = CONTAINER_OF(work, struct SimpleWorkCtx, work);
+    struct simple_work_ctx* ctx = CONTAINER_OF(work, struct simple_work_ctx, work);
 
     int ret;
     do {
@@ -216,7 +216,7 @@ int proximity_sensor_start(int sample_iter) {
 }
 
 int proximity_sensor_stop() {
-    struct SimpleWorkCtx ctx;
+    struct simple_work_ctx ctx;
     k_work_init(&ctx.work, proximity_sensor_stop_work_handler);
     k_sem_init(&ctx.done, 0, 1);
     int ret = k_work_submit(&ctx.work);
@@ -234,20 +234,20 @@ int proximity_sensor_stop() {
 }
 
 int cmd_scan_start(uint8_t* data) {
-    struct CmdStartScanRequest* req_data = (struct CmdStartScanRequest*)data;
-    struct CmdStartScanResponse* resp_data = (struct CmdStartScanResponse*)data;
+    struct cmd_start_scan_request* req_data = (struct cmd_start_scan_request*)data;
+    struct cmd_start_scan_response* resp_data = (struct cmd_start_scan_response*)data;
     int ret = proximity_sensor_change_config(req_data->interval, req_data->window);
     if (ret == 0) {
         ret = proximity_sensor_start(req_data->sample_id);
     }
-    memset(resp_data, 0, sizeof(struct CmdStartScanResponse));
+    memset(resp_data, 0, sizeof(struct cmd_start_scan_response));
     resp_data->status_code = ret;
     return ret;
 }
 
 int cmd_scan_stop(uint8_t* data) {
-    // struct CmdStopScanRequest* req_data = (struct CmdStopScanRequest*)data;
-    struct CmdStopScanResponse* resp_data = (struct CmdStopScanResponse*)data;
+    // struct cmd_stop_scan_request* req_data = (struct cmd_stop_scan_request*)data;
+    struct cmd_stop_scan_response* resp_data = (struct cmd_stop_scan_response*)data;
     int ret = proximity_sensor_stop();
     resp_data->status_code = ret;
     return ret;

@@ -42,7 +42,7 @@ typedef int (*per_file_cb_t)(char* file_path, int16_t index, void* context);
 
 int storage_do_per_file_in_sd(per_file_cb_t cb, void* context);
 
-    /**
+/**
  * @brief
  *
  * @param path path to a single folder or file. In case the path matches the

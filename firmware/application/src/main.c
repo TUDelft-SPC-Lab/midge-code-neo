@@ -42,12 +42,12 @@ int main() {
 
     const struct init_item inits[] = {
         {storage_init_fs, "storage"},
-        {battery_charge_init,  "battery charge sensor"},
-        {audio_sensor_init,  "audio sensor"},
-        {switch_sensor_init,  "switch sensor"},
-        {proximity_sensor_init,  "proximity sensor"},
-        {imu_sensor_init,  "IMU sensor"},
-        {cmd_processor_init,  "command processor"},
+        {battery_charge_init, "battery charge sensor"},
+        {audio_sensor_init, "audio sensor"},
+        {switch_sensor_init, "switch sensor"},
+        {proximity_sensor_init, "proximity sensor"},
+        {imu_sensor_init, "IMU sensor"},
+        {cmd_processor_init, "command processor"},
     };
 
     ret = run_inits(inits, ARRAY_SIZE(inits));
