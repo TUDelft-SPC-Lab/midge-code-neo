@@ -2,6 +2,7 @@
 #define ICM20948_DRIVER_INTERFACE_H_
 
 #include <inttypes.h>
+#include "imu_interface.h"
 
 #define	ICM_20948_ADDR		0x68
 #define AK0991x_DEFAULT_I2C_ADDR	0x0C	/* The default I2C address for AK0991x Magnetometers */
@@ -28,19 +29,12 @@ typedef enum{
 
 #define MAX_IMU_SOURCES 4
 
-
 #define IMU_BUFFER_SIZE 16
 
-typedef struct {
-	uint64_t timestamp;
-	union {
-		float axis[3];
-		float quat[4];
-	};
-} imu_sample_t;
+typedef struct ImuSample imu_sample_t;
 // sd_chunk is 24bytes(struct size) * IMU_BUFFER_SIZE, and we want this to be multiple of 512 (sdcard block size)
 
-extern imu_sample_t imu_buffer[MAX_IMU_SOURCES][2][IMU_BUFFER_SIZE];
+extern struct ImuSample imu_buffer[MAX_IMU_SOURCES][2][IMU_BUFFER_SIZE];
 
 extern const char *imu_sensor_name[MAX_IMU_SOURCES];
 
@@ -64,6 +58,7 @@ uint16_t get_gyr_z(void);
 uint16_t get_rot_x(void);
 uint16_t get_rot_y(void);
 uint16_t get_rot_z(void);
+uint16_t get_rot_w(void);
 uint32_t get_acc_fsr(void);
 uint32_t get_gyr_fsr(void);
 uint8_t get_datarate(void);

@@ -317,13 +317,13 @@ int storage_erase(char* path) {
         res = fs_stat(path, &file_stat);
         if (res < 0) {
             LOG_ERR("could not stat file %s to erase, err %d", path, res);
-        } else if (file_stat.type != FS_DIR_ENTRY_FILE) {
-            LOG_ERR("can only erase files, not dirs, stat type %d", file_stat.type);
-            res = -EACCES;
         } else {
+            if (file_stat.type == FS_DIR_ENTRY_DIR) {
+                LOG_ERR("Trying to erase a folder %s", path);
+            }
             res = fs_unlink(path);
             if (res < 0) {
-                LOG_ERR("could not unlink file %s to erase, err %d", path, res);
+                LOG_ERR("could not erase target %s err %d", path, res);
             }
         }
     }

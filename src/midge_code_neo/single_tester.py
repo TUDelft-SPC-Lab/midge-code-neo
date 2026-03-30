@@ -26,9 +26,9 @@ from midge_badge_framework.protocol import (
     get_bitfield_width,
 )
 
-DEFAULT_IMU_ACC_FSR = 4
-DEFAULT_IMU_GYR_FSR = 1000
-DEFAULT_IMU_DATARATE = 50
+DEFAULT_IMU_ACC_FSR = 4  # g
+DEFAULT_IMU_GYR_FSR = 1000  # dps
+DEFAULT_IMU_DATARATE = 50  # Hz
 
 logging.basicConfig(level=logging.INFO)
 

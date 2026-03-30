@@ -1,4 +1,4 @@
-if(CONFIG_MIDGE_CODE_IMU_ICM20948_USE_CLOSED_DRIVER)
+if(CONFIG_MIDGE_IMU_ICM20948_USE_CLOSED_DRIVER)
     message(STATUS "Using closed-source ICM20948 driver")
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/closed_drv)
 else()

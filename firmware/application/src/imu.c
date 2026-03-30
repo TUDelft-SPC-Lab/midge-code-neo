@@ -5,70 +5,60 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
 
+#include "imu_interface.h"
 #include "midge_protocol.h"
 #include "storage.h"
 #include "utility.h"
 
-#if CONFIG_MIDGE_CODE_IMU_ICM20948_USE_CLOSED_DRIVER
-#include "ICM20948_driver_interface.h"
-#else
-#error "No IMU driver defined"
-#endif
-
-
 LOG_MODULE_REGISTER(imu);
 
-uint8_t imu_sensor_get_status() { return 0; }
+uint8_t imu_sensor_state = IMU_SENSOR_STATE_DISABLED;
 
-int imu_sensor_init() { return icm20948_init(); }
+uint8_t imu_sensor_get_status() { return imu_sensor_state; }
 
-int imu_sensor_start(int sample_iter, uint16_t acc_fsr, uint16_t gyr_fsr, uint16_t datarate) {
-    // start imu files
-    int accel_ret = storage_init_sample_file(FILE_TYPE_ACCEL, sample_iter);
-    int gyro_ret = storage_init_sample_file(FILE_TYPE_GYRO, sample_iter);
-    int magneto_ret = storage_init_sample_file(FILE_TYPE_MAGNETO, sample_iter);
-    int rot_ret = storage_init_sample_file(FILE_TYPE_ROTATION, sample_iter);
-    int stat = (accel_ret != 0) || (gyro_ret != 0) || (magneto_ret != 0) || (rot_ret != 0);
-    if (stat) {
-        LOG_ERR("Error initializing IMU sample files acc: %d - gyro: %d - magneto: %d - rot: %d",
-                accel_ret, gyro_ret, magneto_ret, rot_ret);
-        if (accel_ret == 0) {
-            storage_close(FILE_TYPE_ACCEL);
-        }
-        if (gyro_ret == 0) {
-            storage_close(FILE_TYPE_GYRO);
-        }
-        if (magneto_ret == 0) {
-            storage_close(FILE_TYPE_MAGNETO);
-        }
-        if (rot_ret == 0) {
-            storage_close(FILE_TYPE_ROTATION);
-        }
-        return -EAGAIN;
-    }
-    // start sensors
-    int ret = icm20948_set_fsr((uint32_t)acc_fsr, (uint32_t)gyr_fsr);
+int imu_sensor_init() { int ret =  imu_driver_interface.init();
     if (ret != 0) {
-        return ret;
+        imu_sensor_state = IMU_SENSOR_STATE_ERR;
+        LOG_ERR("Failed to initialize IMU driver: %d", ret);
+    } else {
+        imu_sensor_state = IMU_SENSOR_STATE_STOP;
+        LOG_INF("IMU driver initialized successfully");
     }
-
-    ret = icm20948_set_datarate(datarate);
-    if (ret != 0) {
-        return ret;
-    }
-
-    return icm20948_enable_sensors();
+    return ret;
 }
 
-int imu_sensor_stop() {
-    // stop sensors
-    int ret = icm20948_disable_sensors();
-    // close imu files
-    if (ret == 0) {
-        storage_close(FILE_TYPE_ACCEL);
-        storage_close(FILE_TYPE_GYRO);
-        storage_close(FILE_TYPE_MAGNETO);
-        storage_close(FILE_TYPE_ROTATION);
+int imu_sensor_start(int sample_iter, uint16_t acc_fsr, uint16_t gyr_fsr, uint16_t datarate) {
+    struct ImuConfig config = {
+        .acc_fsr = acc_fsr,
+        .gyr_fsr = gyr_fsr,
+        .datarate = datarate,
+    };
+    // set config
+    int ret = imu_driver_interface.set_config(&config);
+    if (ret != 0) {
+        LOG_ERR("Failed to set IMU config: %d", ret);
+        return ret;
+    }
+
+    // start sampling
+    ret = imu_driver_interface.start(sample_iter);
+    if (ret != 0) {
+        LOG_ERR("Failed to start IMU sampling: %d", ret);
+        imu_sensor_state = IMU_SENSOR_STATE_ERR;
+    } else {
+        LOG_INF("IMU sampling started successfully");
+        imu_sensor_state = IMU_SENSOR_STATE_ACTIVE;
+    }
+    return ret;
+}
+
+int imu_sensor_stop() { int ret = imu_driver_interface.stop();
+    if (ret != 0) {
+        LOG_ERR("Failed to stop IMU sampling: %d", ret);
+        imu_sensor_state = IMU_SENSOR_STATE_ERR;
+    } else {
+        LOG_INF("IMU sampling stopped successfully");
+        imu_sensor_state = IMU_SENSOR_STATE_STOP;
     }
     return ret;
 }

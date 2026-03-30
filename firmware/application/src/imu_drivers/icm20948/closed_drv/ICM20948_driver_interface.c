@@ -20,8 +20,6 @@ static const uint8_t dmp3_image[] = {
 
 inv_icm20948_t icm_device;
 
-imu_sample_t imu_buffer[MAX_IMU_SOURCES][2][IMU_BUFFER_SIZE];
-
 imu_sample_t sample_to_gui_gyr;
 imu_sample_t sample_to_gui_mag;
 imu_sample_t sample_to_gui_acc;
@@ -103,7 +101,7 @@ void print_sensor_data(void* context, uint8_t sensortype, uint64_t timestamp, co
         case INV_ICM20948_SENSOR_ACCELEROMETER:
 
             sample.timestamp = timestamp;
-            memcpy(sample.axis, data, 12);
+            memcpy(&sample.axis, data, 12);
             memcpy(&imu_buffer[ACCEL][active_buffer[ACCEL]][count[ACCEL]++], &sample,
                    sizeof(sample));
             if (count[ACCEL] < IMU_BUFFER_SIZE) break;
@@ -121,7 +119,7 @@ void print_sensor_data(void* context, uint8_t sensortype, uint64_t timestamp, co
 
         case INV_ICM20948_SENSOR_GYROSCOPE:
             sample.timestamp = timestamp;
-            memcpy(sample.axis, data, 12);
+            memcpy(&sample.axis, data, 12);
             memcpy(&imu_buffer[GYRO][active_buffer[GYRO]][count[GYRO]++], &sample, sizeof(sample));
 
             if (count[GYRO] < IMU_BUFFER_SIZE) break;
@@ -139,7 +137,7 @@ void print_sensor_data(void* context, uint8_t sensortype, uint64_t timestamp, co
 
         case INV_ICM20948_SENSOR_GEOMAGNETIC_FIELD:
             sample.timestamp = timestamp;
-            memcpy(sample.axis, data, 12);
+            memcpy(&sample.axis, data, 12);
             memcpy(&imu_buffer[MAG][active_buffer[MAG]][count[MAG]++], &sample, sizeof(sample));
 
             if (count[MAG] < IMU_BUFFER_SIZE) break;
@@ -157,7 +155,7 @@ void print_sensor_data(void* context, uint8_t sensortype, uint64_t timestamp, co
 
         case INV_ICM20948_SENSOR_ROTATION_VECTOR:
             sample.timestamp = timestamp;
-            memcpy(sample.quat, data, 16);
+            memcpy(&sample.quat, data, 16);
             memcpy(&imu_buffer[ROTATION_VECTOR][active_buffer[ROTATION_VECTOR]]
                               [count[ROTATION_VECTOR]++],
                    &sample, sizeof(sample));
@@ -180,29 +178,31 @@ void print_sensor_data(void* context, uint8_t sensortype, uint64_t timestamp, co
     }
 }
 
-uint16_t get_gyr_x(void) { return ((uint16_t)(sample_to_gui_gyr.axis[0] * 1000)); }
+uint16_t get_gyr_x(void) { return ((uint16_t)(sample_to_gui_gyr.axis.x * 1000)); }
 
-uint16_t get_gyr_y(void) { return ((uint16_t)(sample_to_gui_gyr.axis[1] * 1000)); }
+uint16_t get_gyr_y(void) { return ((uint16_t)(sample_to_gui_gyr.axis.y * 1000)); }
 
-uint16_t get_gyr_z(void) { return ((uint16_t)(sample_to_gui_gyr.axis[2] * 1000)); }
+uint16_t get_gyr_z(void) { return ((uint16_t)(sample_to_gui_gyr.axis.z * 1000)); }
 
-uint16_t get_mag_x(void) { return ((uint16_t)(sample_to_gui_mag.axis[0] * 1000)); }
+uint16_t get_mag_x(void) { return ((uint16_t)(sample_to_gui_mag.axis.x * 1000)); }
 
-uint16_t get_mag_y(void) { return ((uint16_t)(sample_to_gui_mag.axis[1] * 1000)); }
+uint16_t get_mag_y(void) { return ((uint16_t)(sample_to_gui_mag.axis.y * 1000)); }
 
-uint16_t get_mag_z(void) { return ((uint16_t)(sample_to_gui_mag.axis[2] * 1000)); }
+uint16_t get_mag_z(void) { return ((uint16_t)(sample_to_gui_mag.axis.z * 1000)); }
 
-uint16_t get_acc_x(void) { return ((uint16_t)(sample_to_gui_acc.axis[0] * 1000)); }
+uint16_t get_acc_x(void) { return ((uint16_t)(sample_to_gui_acc.axis.x * 1000)); }
 
-uint16_t get_acc_y(void) { return ((uint16_t)(sample_to_gui_acc.axis[1] * 1000)); }
+uint16_t get_acc_y(void) { return ((uint16_t)(sample_to_gui_acc.axis.y * 1000)); }
 
-uint16_t get_acc_z(void) { return ((uint16_t)(sample_to_gui_acc.axis[2] * 1000)); }
+uint16_t get_acc_z(void) { return ((uint16_t)(sample_to_gui_acc.axis.z * 1000)); }
 
-uint16_t get_rot_x(void) { return ((uint16_t)(sample_to_gui_rot.axis[0] * 1000)); }
+uint16_t get_rot_x(void) { return ((uint16_t)(sample_to_gui_rot.quat.x * 1000)); }
 
-uint16_t get_rot_y(void) { return ((uint16_t)(sample_to_gui_rot.axis[1] * 1000)); }
+uint16_t get_rot_y(void) { return ((uint16_t)(sample_to_gui_rot.quat.y * 1000)); }
 
-uint16_t get_rot_z(void) { return ((uint16_t)(sample_to_gui_rot.axis[2] * 1000)); }
+uint16_t get_rot_z(void) { return ((uint16_t)(sample_to_gui_rot.quat.z * 1000)); }
+
+uint16_t get_rot_w(void) { return ((uint16_t)(sample_to_gui_rot.quat.w * 1000)); }
 
 uint32_t get_gyr_fsr(void) { return local_gyr_fsr; }
 

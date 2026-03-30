@@ -3,7 +3,8 @@
 #include <nordic/nrf52832_qfaa.dtsi>
 #include "midge_badge_nrf52-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
-
+#include <zephyr/dt-bindings/sensor/icm20948.h>
+#define CLOSED_SOURCE_ICM20948 0
 /**
  * LED_IND PO.03 pin 19
  * SCL     PO.02 pin 15
@@ -47,7 +48,7 @@
 			label = "Status led";
 		};
 	};
-
+#if CLOSED_SOURCE_ICM20948
 	imu_int_pin {
 		compatible = "gpio-keys";
 
@@ -56,6 +57,7 @@
 			label = "IMU interrupt pin";
 		};
 	};
+#endif
 
 	switch_pos {
 		compatible= "gpio-keys";
@@ -86,7 +88,9 @@
 		sw-audio-high = &sw_audio_high;
 		mcuboot-led0 = &led0;
 		imu-i2c = &i2c1;
+#if CLOSED_SOURCE_ICM20948
 		imu-int = &imu_int;
+#endif
 	};
 };
 
@@ -166,7 +170,15 @@ dmic_dev: &pdm0 {
 	zephyr,flash-buf-max-size = <255>;
 
 	imu: icm20948@68 {
+#if CLOSED_SOURCE_ICM20948
 		compatible = "invensense,i2c-device";
+#else
+		compatible = "invensense,icm20948";
+		int-gpios = <&gpio0 30 GPIO_ACTIVE_HIGH>;
+		mag-mode = <ICM20948_DT_MAG_MODE_50HZ>; /* 50Hz magnetometer */
+		gyro-fs = <ICM20948_DT_GYRO_FS_1000>; /* 1000 dps gyro full scale */
+		accel-fs = <ICM20948_DT_ACCEL_FS_4>; /* 4 g accel full scale */
+#endif
 		status = "okay";
 		reg = <0x68>;
 	};

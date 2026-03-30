@@ -1,5 +1,6 @@
 target_sources(app PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/i2c_shim.c
+	${CMAKE_CURRENT_SOURCE_DIR}/imu_interface.c
 	${CMAKE_CURRENT_SOURCE_DIR}/ICM20948_driver_interface.c
 	#${CMAKE_CURRENT_SOURCE_DIR}/tdk__eMD_dri/Ak0991x/Ak0991x.c
 	${CMAKE_CURRENT_SOURCE_DIR}/tdk_eMD_drv/ICM20948/Icm20948Augmented.c

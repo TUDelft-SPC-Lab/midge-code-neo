@@ -13,7 +13,7 @@
 
 LOG_MODULE_REGISTER(mb_audio);
 
-#define MAX_SAMPLE_RATE 20000
+#define MAX_SAMPLE_RATE 16000
 
 #define SAMPLE_BIT_WIDTH 16
 #define BYTES_PER_SAMPLE sizeof(int16_t)
@@ -36,7 +36,7 @@ char mem_slab_buffer[BLOCK_COUNT*MAX_BLOCK_SIZE] __aligned(4);
 
 #define HIGH_SAMPLE_RATE MAX_SAMPLE_RATE
 #define LOW_SAMPLE_RATE_DECIMATION 16
-#define LOW_SAMPLE_RATE (HIGH_SAMPLE_RATE / LOW_SAMPLE_RATE_DECIMATION)
+#define LOW_SAMPLE_RATE (20000 / LOW_SAMPLE_RATE_DECIMATION)
 
 const struct device* const dmic_dev = DEVICE_DT_GET(DT_NODELABEL(dmic_dev));
 /**
