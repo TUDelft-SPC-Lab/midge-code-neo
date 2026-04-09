@@ -2,6 +2,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/timeutil.h>
 
+#include "storage.h"
+
 LOG_MODULE_REGISTER(time_control);
 
 struct timeutil_sync_state sync_state = {};

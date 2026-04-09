@@ -13,7 +13,7 @@
 
 LOG_MODULE_REGISTER(mb_audio);
 
-#define MAX_SAMPLE_RATE 16000
+#define MAX_SAMPLE_RATE 20000
 
 #define SAMPLE_BIT_WIDTH 16
 #define BYTES_PER_SAMPLE sizeof(int16_t)
@@ -63,6 +63,42 @@ static struct {
     uint16_t sample_iter;
 } sensor_data = {.state = AUDIO_SENSOR_STATE_DISABLED, .sample_iter = 0, .audio_config = {}};
 
+struct WavFileHeader {
+    const uint8_t file_type_bloc_id[4];  // RIFF
+    uint32_t file_size;                  // size of entire file minus 8 bytes
+
+    // format bloc
+    const uint8_t file_format_id[4];  // WAVE
+    const uint8_t format_bloc_id[4];  // fmt
+    const uint32_t format_bloc_size;  // 16 for 16-bit PCM
+    const uint16_t audio_format;      // 1 for PCM
+    uint16_t num_channels;            // 1 for mono, 2 for stereo
+    uint32_t sample_rate;             // pcm_rate
+    uint32_t byte_per_sec;            // sample_rate * num_channels * bits_per_sample/8
+    uint16_t byte_per_bloc;           // num_channels * bits_per_sample/8
+    const uint16_t bits_per_sample;
+
+    // data bloc
+    const uint8_t data_bloc_id[4];  // data
+    uint32_t data_bloc_size;
+
+    // data follows
+} wav_hdr = {
+    .file_type_bloc_id = {'R', 'I', 'F', 'F'},
+    //.file_size = sizeof(data + header) - 8
+    .file_format_id = {'W', 'A', 'V', 'E'},
+    .format_bloc_id = {'f', 'm', 't', ' '},
+    .format_bloc_size = SAMPLE_BIT_WIDTH,
+    .audio_format = 1,  // PCM
+    // .num_channels = 2,
+    //.sample_rate = 20000,
+    //.byte_per_sec = byte_per_sample * num_channels * sample_rate,
+    //.byte_per_bloc = channels * 16 / 8,
+    .bits_per_sample = SAMPLE_BIT_WIDTH,
+    .data_bloc_id = {'d', 'a', 't', 'a'},
+    //.data_bloc_size = sizeof(pcm data)
+};
+
 static int write_metadata(struct audio_meta_data* metadata) {
     char buffer[128];
     int len = snprintf(buffer, sizeof(buffer), "%" PRIu64 ", %d,%d,%d,%d\n", metadata->timestamp_ms,
@@ -109,10 +145,20 @@ static void audio_init_sampling_work_handler(struct k_work* work) {
             break;
         }
 
+        // write header in advance
+        ret = storage_write(FILE_TYPE_AUDIO, &wav_hdr, sizeof(wav_hdr));
+        if (ret < 0) {
+            LOG_ERR("Failed to write wav header, status %d", ret);
+            sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+            storage_close(FILE_TYPE_AUDIO);
+            break;
+        }
+
         ret = storage_init_sample_file(FILE_TYPE_AUDIO_METADATA, sensor_data.sample_iter);
         char csv_header[] = "timestamp(ms), status, event, freq, channels\n";
         if (ret == 0) {
-            ret = storage_write(FILE_TYPE_AUDIO_METADATA, csv_header, sizeof(csv_header));
+            // -1 to exclude null terminator
+            ret = storage_write(FILE_TYPE_AUDIO_METADATA, csv_header, sizeof(csv_header) - 1);
         }
         if (ret < 0) {
             LOG_ERR("Failed to open metadata file, status %d", ret);
@@ -211,6 +257,7 @@ static void audio_sample_process_work_handler(struct k_work* work) {
         } else {
             ret = storage_write(FILE_TYPE_AUDIO, audio_buffer, audio_buffer_size);
             k_mem_slab_free(&mem_slab, audio_buffer);
+            wav_hdr.data_bloc_size += audio_buffer_size;
             if (ret < 0) {
                 LOG_ERR("write sample failed \n");
                 // sampling will stop, file system could be compromised.
@@ -240,6 +287,22 @@ static void audio_sample_process_work_handler(struct k_work* work) {
 
             sensor_data.state = AUDIO_SENSOR_STATE_STOP;
             LOG_INF("finished sampling round");
+
+            // update the wav header with correct data and total file size info
+            ret = storage_seek_start(FILE_TYPE_AUDIO);
+            if (ret < 0) {
+                LOG_ERR("Failed to seek to start of audio file to update header, status %d", ret);
+                sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+            } else {
+                // add total data size to header
+                wav_hdr.file_size = wav_hdr.data_bloc_size + sizeof(wav_hdr) - 8;
+                ret = storage_write(FILE_TYPE_AUDIO, &wav_hdr, sizeof(wav_hdr));
+                if (ret < 0) {
+                    LOG_ERR("Failed to update wav header with file info, status %d", ret);
+                    sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+                }
+            }
+
             ret = storage_close(FILE_TYPE_AUDIO);
             int ret2 = storage_close(FILE_TYPE_AUDIO_METADATA);
             if ((ret < 0) || (ret2 < 0)) {
@@ -304,6 +367,13 @@ int audio_sensor_start(int sample_iter, int mode) {
     }
 
     sensor_data.sample_iter = sample_iter;
+
+    // add file info to header
+    wav_hdr.num_channels = sensor_data.audio_config.channel.act_num_chan;
+    wav_hdr.sample_rate = sensor_data.audio_config.streams->pcm_rate;
+    wav_hdr.byte_per_sec = BYTES_PER_SAMPLE * wav_hdr.num_channels * wav_hdr.sample_rate;
+    wav_hdr.byte_per_bloc = BYTES_PER_SAMPLE * wav_hdr.num_channels;
+    wav_hdr.data_bloc_size = 0;  // will be updated as samples are written
 
     memset(&audio_sampling_work_ctx, 0, sizeof(audio_sampling_work_ctx));
     k_sem_init(&audio_sampling_work_ctx.init_done, 0, 1);

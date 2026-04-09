@@ -71,6 +71,8 @@ int storage_write(enum mb_file_type file_type, void* data, size_t size);
 
 int storage_close(enum mb_file_type file_type);
 
+int storage_seek_start(enum mb_file_type file_type);
+
 int cmd_erase_sd(uint8_t* data);
 
 int cmd_get_free_sd_space(uint8_t* data);

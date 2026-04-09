@@ -357,7 +357,7 @@ int storage_init_sample_file(enum mb_file_type file_type, int sample_iter) {
     fs_file_t_init(&file_info_table[file_type].file);
     const char* fmt_prox = "%s/PROX%d";
     const char* fmt_sync = "%s/SYNC%d";
-    const char* fmt_mic = "%s/MIC%d";
+    const char* fmt_mic = "%s/MIC%d.wav";
     const char* fmt_mic_meta = "%s/MIC%d.m";
     const char* fmt_accel = "%s/ACC%d";
     const char* fmt_gyro = "%s/GYR%d";
@@ -442,6 +442,19 @@ int storage_close(enum mb_file_type file_type) {
     file_info_table[file_type].ret_last = ret;
     k_mutex_unlock(&storage_mutex);
     storage_update_status();
+    return ret;
+}
+
+int storage_seek_start(enum mb_file_type file_type) {
+    if (file_info_table[file_type].status != MB_FILE_STATUS_ACTIVE) {
+        LOG_ERR("cannot seek in file type %d with status %d", file_type,
+                file_info_table[file_type].status);
+        return -EACCES;
+    }
+    int ret = fs_seek(&file_info_table[file_type].file, 0, FS_SEEK_SET);
+    if (ret < 0) {
+        LOG_ERR("failed to seek to start of file type %d, err %d", file_type, ret);
+    }
     return ret;
 }
 
