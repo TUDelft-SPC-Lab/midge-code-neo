@@ -13,8 +13,6 @@
 
 LOG_MODULE_REGISTER(mb_audio);
 
-#define MAX_SAMPLE_RATE 20000
-
 #define SAMPLE_BIT_WIDTH 16
 #define BYTES_PER_SAMPLE sizeof(int16_t)
 
@@ -33,10 +31,6 @@ struct k_mem_slab mem_slab;
 char mem_slab_buffer[BLOCK_COUNT * MAX_BLOCK_SIZE] __aligned(4);
 
 // K_MEM_SLAB_DEFINE_STATIC(mem_slab, MAX_BLOCK_SIZE, BLOCK_COUNT, 4);
-
-#define HIGH_SAMPLE_RATE MAX_SAMPLE_RATE
-#define LOW_SAMPLE_RATE_DECIMATION 16
-#define LOW_SAMPLE_RATE (20000 / LOW_SAMPLE_RATE_DECIMATION)
 
 const struct device* const dmic_dev = DEVICE_DT_GET(DT_NODELABEL(dmic_dev));
 /**
@@ -61,7 +55,13 @@ static struct {
     enum audio_sensor_state state;
     struct dmic_cfg audio_config;
     uint16_t sample_iter;
-} sensor_data = {.state = AUDIO_SENSOR_STATE_DISABLED, .sample_iter = 0, .audio_config = {}};
+    uint16_t high_sample_rate;
+    uint16_t low_sample_rate_decimation;
+} sensor_data = {.state = AUDIO_SENSOR_STATE_DISABLED,
+                 .audio_config = {},
+                 .sample_iter = 0,
+                 .high_sample_rate = 20000,
+                 .low_sample_rate_decimation = 16};
 
 struct WavFileHeader {
     const uint8_t file_type_bloc_id[4];  // RIFF
@@ -219,6 +219,7 @@ static void audio_sample_process_work_handler(struct k_work* work) {
     struct k_work_delayable* dwork = k_work_delayable_from_work(work);
     struct audio_sampling_work_ctx* ctx =
         CONTAINER_OF(dwork, struct audio_sampling_work_ctx, process_work);
+    bool decimate = switch_sensor_position() == PRIVACY_SWITCH_POS_LOW ? true : false;
 
     void* audio_buffer;
     uint32_t audio_buffer_size;
@@ -255,7 +256,21 @@ static void audio_sample_process_work_handler(struct k_work* work) {
                 sensor_data.state = AUDIO_SENSOR_STATE_ERR;
             }
         } else {
-            ret = storage_write(FILE_TYPE_AUDIO, audio_buffer, audio_buffer_size);
+            if (decimate) {
+                int channels = sensor_data.audio_config.channel.act_num_chan;
+                int step = BYTES_PER_SAMPLE * channels;
+                int decimation = sensor_data.low_sample_rate_decimation;
+                size_t decimated_size = audio_buffer_size / decimation;
+                uint8_t subsampled_buffer[decimated_size];
+                uint8_t* subsampled_buffer_ptr = subsampled_buffer;
+                for (int i = 0; i < audio_buffer_size; i += (decimation * step)) {
+                    memcpy(subsampled_buffer_ptr, (uint8_t*)audio_buffer + i, step);
+                    subsampled_buffer_ptr += step;
+                }
+                ret = storage_write(FILE_TYPE_AUDIO, subsampled_buffer, decimated_size);
+            } else {
+                ret = storage_write(FILE_TYPE_AUDIO, audio_buffer, audio_buffer_size);
+            }
             k_mem_slab_free(&mem_slab, audio_buffer);
             wav_hdr.data_bloc_size += audio_buffer_size;
             if (ret < 0) {
@@ -316,7 +331,8 @@ static void audio_sample_process_work_handler(struct k_work* work) {
     }
 }
 
-int audio_sensor_start(int sample_iter, int mode) {
+int audio_sensor_start(int sample_iter, uint16_t high_sample_rate,
+                       uint16_t low_sample_rate_decimation, int mode) {
     // Get sampling freq based on switch position
     enum privacy_sw_pos switch_pos = switch_sensor_position();
 
@@ -345,12 +361,11 @@ int audio_sensor_start(int sample_iter, int mode) {
     }
 
     switch (switch_pos) {
-        case PRIVACY_SWITCH_POS_LOW: {
-            stream.pcm_rate = LOW_SAMPLE_RATE;
-            stream.block_size = MAX_BLOCK_SIZE;  // BLOCK_SIZE(LOW_SAMPLE_RATE, mode);
-        } break;
+        // Both use the same sample freq, the output buffer is manually
+        // decimated as the hw may not support low sample rates
+        case PRIVACY_SWITCH_POS_LOW:
         case PRIVACY_SWITCH_POS_HIGH: {
-            stream.pcm_rate = HIGH_SAMPLE_RATE;
+            stream.pcm_rate = high_sample_rate;
             stream.block_size = MAX_BLOCK_SIZE;  // BLOCK_SIZE(HIGH_SAMPLE_RATE, 1);
         } break;
         case PRIVACY_SWITCH_POS_OFF:
@@ -365,12 +380,16 @@ int audio_sensor_start(int sample_iter, int mode) {
         LOG_ERR("DMIC configuration failed");
         return ret;
     }
+    sensor_data.high_sample_rate = high_sample_rate;
+    sensor_data.low_sample_rate_decimation = low_sample_rate_decimation;
 
     sensor_data.sample_iter = sample_iter;
 
     // add file info to header
     wav_hdr.num_channels = sensor_data.audio_config.channel.act_num_chan;
-    wav_hdr.sample_rate = sensor_data.audio_config.streams->pcm_rate;
+    bool decimate = switch_sensor_position() == PRIVACY_SWITCH_POS_LOW ? true : false;
+    uint32_t decimation = decimate ? sensor_data.low_sample_rate_decimation : 1;
+    wav_hdr.sample_rate = sensor_data.audio_config.streams->pcm_rate / decimation;
     wav_hdr.byte_per_sec = BYTES_PER_SAMPLE * wav_hdr.num_channels * wav_hdr.sample_rate;
     wav_hdr.byte_per_bloc = BYTES_PER_SAMPLE * wav_hdr.num_channels;
     wav_hdr.data_bloc_size = 0;  // will be updated as samples are written
@@ -432,7 +451,8 @@ int audio_sensor_init(void) {
 
 int cmd_mic_start(uint8_t* data) {
     struct cmd_start_mic_request* req_data = (struct cmd_start_mic_request*)data;
-    int ret = audio_sensor_start(req_data->sample_id, req_data->mode);
+    int ret = audio_sensor_start(req_data->sample_id, req_data->high_sample_rate,
+                                 req_data->low_sample_rate_decimation, req_data->mode);
     memset(data, 0, sizeof(struct cmd_start_mic_response));
     struct cmd_start_mic_response* resp_data = (struct cmd_start_mic_response*)data;
     resp_data->status_code = ret;

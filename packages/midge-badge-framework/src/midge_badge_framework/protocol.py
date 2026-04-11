@@ -183,7 +183,7 @@ class CmdStartMicRequest(MidgeBadgeCommand):
     _fields_ = [
         ("sample_id", c_uint16),
         ("high_sample_rate", c_uint16),
-        ("low_sample_rate", c_uint16),
+        ("low_sample_rate_decimation", c_uint16),
         ("mode", c_uint8),
     ]
 

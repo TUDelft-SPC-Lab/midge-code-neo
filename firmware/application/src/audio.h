@@ -35,7 +35,8 @@ struct audio_meta_data {
 
 // int proximity_sensor_change_config(uint16_t interval, uint16_t window);
 
-int audio_sensor_start(int sample_iter, int mode);
+int audio_sensor_start(int sample_iter, uint16_t high_sample_rate,
+                       uint16_t low_sample_rate_decimation, int mode);
 
 int audio_sensor_stop();
 

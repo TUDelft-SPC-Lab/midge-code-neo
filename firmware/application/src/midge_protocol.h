@@ -76,7 +76,7 @@ struct __attribute__((packed)) cmd_get_fw_version_response {
 struct __attribute__((packed)) cmd_start_mic_request {
     uint16_t sample_id;
     uint16_t high_sample_rate;
-    uint16_t low_sample_rate;
+    uint16_t low_sample_rate_decimation;
     uint8_t mode;  // See @ref audio.h for mode definitions
 };
 

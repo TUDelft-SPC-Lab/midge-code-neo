@@ -27,8 +27,8 @@ LOG_MODULE_REGISTER(cmd_processor);
 // more than the BLE message delay, to ensure that the sync error value is
 // Actually meaningful
 #define BLE_LATENCY_THRESHOLD_MS 100
-// For now, Assume best scenario: Latency of the sync message was
-#define BLE_LATENCY_AVG_RX_MS 15
+// For now, Assume balanced scenario: Latency of the sync message was
+#define BLE_LATENCY_AVG_RX_MS 40
 
 struct custom_advertisement_data advertised_data = {
     .battery_mv = 0, .active_sensor_bitflags = 0, .badge_assignment = {.u16_all = 0xFFFF}};
@@ -69,12 +69,11 @@ int cmd_status(uint8_t* data) {
             error = -(int64_t)(current_interpolation - req_data->millis_since_epoch);
             delta = -error;
         }
-        error = req_data->millis_since_epoch - current_interpolation;
     }
     int ret = 0;
     if (delta > BLE_LATENCY_THRESHOLD_MS) {
-        LOG_INF("Performing time sync, error: %" PRId64 " ms, assumed latency: %" PRId64 " ms",
-                error, BLE_LATENCY_AVG_RX_MS);
+        LOG_INF("Performing time sync, error: %" PRId64 " ms, assumed latency: %d ms", error,
+                BLE_LATENCY_AVG_RX_MS);
         ret = time_control_update(req_data->millis_since_epoch + BLE_LATENCY_AVG_RX_MS);
         if (ret < 0) {
             LOG_ERR("Failed to perform the time sync");

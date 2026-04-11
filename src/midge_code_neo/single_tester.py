@@ -29,6 +29,8 @@ from midge_badge_framework.protocol import (
 DEFAULT_IMU_ACC_FSR = 4  # g
 DEFAULT_IMU_GYR_FSR = 1000  # dps
 DEFAULT_IMU_DATARATE = 50  # Hz
+DEFAULT_AUDIO_HIGH_SAMPLE_RATE = 20000  # Hz
+DEFAULT_AUDIO_LOW_SAMPLE_RATE_DECIMATION = 16  # Hz
 
 logging.basicConfig(level=logging.INFO)
 
@@ -192,7 +194,7 @@ class MidgeBadgeConsole(cmd.Cmd):
             print("Error: Invalid syntax, <sample_id> and <mode> must be numbers")
             return
 
-        request = CmdStartMicRequest(id, mode)
+        request = CmdStartMicRequest(id, DEFAULT_AUDIO_HIGH_SAMPLE_RATE, DEFAULT_AUDIO_LOW_SAMPLE_RATE_DECIMATION, mode)
         self.__common_cmd_execute(request)
 
     def do_stop_mic(self, _):
