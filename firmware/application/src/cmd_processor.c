@@ -26,9 +26,14 @@ LOG_MODULE_REGISTER(cmd_processor);
 // after time significant enough for the internal Mingle Midge clock to drift
 // more than the BLE message delay, to ensure that the sync error value is
 // Actually meaningful
-#define BLE_LATENCY_THRESHOLD_MS 100
-// For now, Assume balanced scenario: Latency of the sync message was
-#define BLE_LATENCY_AVG_RX_MS 40
+#define BLE_LATENCY_THRESHOLD_MS 200
+// Assume scenario where all the sampling tasks are active, latency is
+// expected to be BLE latency + thread scheduling delay.
+// the 90 ms value is based on empirical measurements of the current implementation, but it could be
+// further refined with more detailed analysis and testing of the BLE latency and thread scheduling
+// delay under different conditions. Most likely, to be defined in the board cmake file as
+// it depends on time to complete other tasks, i.e. it depends on processing power
+#define BLE_LATENCY_AVG_RX_MS 90
 
 struct custom_advertisement_data advertised_data = {
     .battery_mv = 0, .active_sensor_bitflags = 0, .badge_assignment = {.u16_all = 0xFFFF}};
