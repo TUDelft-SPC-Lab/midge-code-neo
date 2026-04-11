@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from ctypes import Structure, Union, c_int16, c_int32, c_uint8, c_uint16, c_uint32, c_uint64
+from ctypes import Structure, Union, c_int16, c_int32, c_int64, c_uint8, c_uint16, c_uint32, c_uint64
 from enum import IntEnum
 
 # analogue of midge_protocol.h
@@ -155,7 +155,7 @@ class CmdStatusResponse(MidgeBadgeCommand):
         ("proximity_init_status", c_uint8),
         ("battery_millivolts", c_int16),
         ("badge_assignment", BadgeAssignment),
-        ("delta_ms", c_uint64),
+        ("sync_error_ms", c_int64),  # ref - interp
     ]
 
     def id() -> int:
@@ -180,7 +180,12 @@ class CmdGetFWVersionResponse(MidgeBadgeCommand):
 
 class CmdStartMicRequest(MidgeBadgeCommand):
     _pack_ = 1
-    _fields_ = [("sample_id", c_uint16), ("mode", c_uint8)]
+    _fields_ = [
+        ("sample_id", c_uint16),
+        ("high_sample_rate", c_uint16),
+        ("low_sample_rate", c_uint16),
+        ("mode", c_uint8),
+    ]
 
     def id() -> int:
         return MidgeBadgeCommandID.CMD_ID_START_MIC

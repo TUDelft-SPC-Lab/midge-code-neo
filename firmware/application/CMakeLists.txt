@@ -10,14 +10,22 @@ execute_process(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     OUTPUT_VARIABLE HATCH_VERSION
     OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
 )
+
+# get the current unix timestamp
+execute_process(
+    COMMAND date +%s
+    OUTPUT_VARIABLE FW_BUILD_TIMESTAMP
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 
 target_include_directories(app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 # Add the commit hash as a compile definition
 add_compile_definitions(FW_VERSION="${HATCH_VERSION}")
+add_compile_definitions(FW_BUILD_TIMESTAMP=${FW_BUILD_TIMESTAMP})
 
 add_subdirectory(src/imu_drivers)
 
