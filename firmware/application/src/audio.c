@@ -39,7 +39,7 @@ const struct device* const dmic_dev = DEVICE_DT_GET(DT_NODELABEL(dmic_dev));
  * For now, assumes usage of PDM Mic ST MP34DT05TR-A
  */
 struct pdm_io_cfg microphone_cfg = {
-    .min_pdm_clk_freq = 1200000,
+    .min_pdm_clk_freq = 1000000,  // 1MHz is incorrect but works for 16KHz recording 1200000,
     .max_pdm_clk_freq = 3250000,
     // usual value in datasheets: 40% min, 60% max, 50% typical
     .min_pdm_clk_dc = 40,
