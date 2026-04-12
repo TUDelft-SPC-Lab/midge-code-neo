@@ -15,6 +15,7 @@ class TimestampU64(Structure):
 
 
 class ScanFileEntry(Structure):
+    _pack_ = 1
     _fields_ = [
         ("rssi", c_int8),
         ("mac_address", c_uint8 * 6),
@@ -81,6 +82,7 @@ class AudioMetaDataCSVfmt:
 
 
 class _ImuAxisEntry(Structure):
+    _pack_ = 1
     _fields_ = [("timestamp", TimestampU64), ("x", c_float), ("y", c_float), ("z", c_float), ("reserved", c_float)]
 
     def __str__(self):
@@ -114,7 +116,23 @@ class ImuMagnetoEntry(_ImuAxisEntry):
 
 
 class RotationVectorEntry(Structure):
+    _pack_ = 1
     _fields_ = [("timestamp", TimestampU64), ("i", c_float), ("j", c_float), ("k", c_float), ("real", c_float)]
 
     def units(self):
         return "unitless"
+
+
+class TimeSyncEntry(Structure):
+    _pack_ = 1
+    _fields_ = [
+        ("reference", c_uint64),
+        ("interpolated", c_uint64),
+    ]
+
+    def __str__(self):
+        ret = f"{self.__class__.__name__} : "
+        for field in self._fields_:
+            attr = field[0]
+            ret += f"[{attr} = {datetime.fromtimestamp(getattr(self, attr) / 1000.0)}]"
+        return ret

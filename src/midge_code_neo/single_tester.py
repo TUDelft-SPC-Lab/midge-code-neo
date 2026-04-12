@@ -29,7 +29,7 @@ from midge_badge_framework.protocol import (
 DEFAULT_IMU_ACC_FSR = 4  # g
 DEFAULT_IMU_GYR_FSR = 1000  # dps
 DEFAULT_IMU_DATARATE = 50  # Hz
-DEFAULT_AUDIO_HIGH_SAMPLE_RATE = 20000  # Hz
+DEFAULT_AUDIO_HIGH_SAMPLE_RATE = 16000  # Hz
 DEFAULT_AUDIO_LOW_SAMPLE_RATE_DECIMATION = 16  # Hz
 
 logging.basicConfig(level=logging.INFO)

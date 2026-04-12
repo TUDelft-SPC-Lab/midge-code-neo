@@ -24,7 +24,6 @@ enum mb_file_type {
     FILE_TYPE_GYRO = 4,
     FILE_TYPE_MAGNETO = 5,
     FILE_TYPE_ROTATION = 6,
-    FILE_TYPE_TIMESYNC = 7,
 
     // update prj.conf if this is changed to increase CONFIG_FS_FATFS_NUM_FILES
     FILE_TYPE_MAX = 7,
@@ -72,6 +71,15 @@ int storage_write(enum mb_file_type file_type, void* data, size_t size);
 int storage_close(enum mb_file_type file_type);
 
 int storage_seek_start(enum mb_file_type file_type);
+
+/**
+ * @brief Special case to register time sync events
+ *
+ * @param reference timestamp sent from the remote controller
+ * @param interpolated timestamp interpolated on the badge at the time the sync message was received
+ * @return int 0 if successful, negative error code if FS specific error occurred
+ */
+int storage_write_timesync(uint64_t reference, uint64_t interpolated);
 
 int cmd_erase_sd(uint8_t* data);
 

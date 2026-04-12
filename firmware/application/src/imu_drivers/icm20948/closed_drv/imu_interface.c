@@ -8,7 +8,7 @@
 
 LOG_MODULE_REGISTER(imu_interface);
 
-struct imu_sample imu_buffer[MAX_IMU_SOURCES][2][IMU_BUFFER_SIZE];
+struct imu_entry imu_buffer[MAX_IMU_SOURCES][2][IMU_BUFFER_SIZE];
 
 int imu_driver_init() { return icm20948_init(); }
 

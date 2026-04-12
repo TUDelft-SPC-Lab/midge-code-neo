@@ -20,21 +20,6 @@
 
 LOG_MODULE_REGISTER(cmd_processor);
 
-// minimum delta to do a time-sync
-// TODO THis needs a more detailed analysis. BLE message delay can be up to
-// 100ms or more in some cases, so time syncs should probably only be performed
-// after time significant enough for the internal Mingle Midge clock to drift
-// more than the BLE message delay, to ensure that the sync error value is
-// Actually meaningful
-#define BLE_LATENCY_THRESHOLD_MS 200
-// Assume scenario where all the sampling tasks are active, latency is
-// expected to be BLE latency + thread scheduling delay.
-// the 90 ms value is based on empirical measurements of the current implementation, but it could be
-// further refined with more detailed analysis and testing of the BLE latency and thread scheduling
-// delay under different conditions. Most likely, to be defined in the board cmake file as
-// it depends on time to complete other tasks, i.e. it depends on processing power
-#define BLE_LATENCY_AVG_RX_MS 90
-
 struct custom_advertisement_data advertised_data = {
     .battery_mv = 0, .active_sensor_bitflags = 0, .badge_assignment = {.u16_all = 0xFFFF}};
 
@@ -54,45 +39,13 @@ int cmd_setup_experiment(uint8_t* data) {
 int cmd_status(uint8_t* data) {
     LOG_INF("received status message");
     struct cmd_status_request* req_data = (struct cmd_status_request*)data;
-
-    uint64_t current_interpolation = time_control_get_timestamp();
-    int64_t error;  // ref - interp
-    int64_t delta;
-    if (current_interpolation < FW_BUILD_TIMESTAMP) {
-        // time has not been synced
-        error = (int64_t)req_data->millis_since_epoch;
-        delta = error;
-        LOG_WRN("Time has not been synced since boot, error value is intentionally innacurate");
-    } else {
-        // Time was initialized, we can reasonably assume drift will not cause
-        // a difference large enough to make the error value take less than 64
-        // bits
-        if (current_interpolation < req_data->millis_since_epoch) {
-            error = (int64_t)(req_data->millis_since_epoch - current_interpolation);
-            delta = error;
-        } else {
-            error = -(int64_t)(current_interpolation - req_data->millis_since_epoch);
-            delta = -error;
-        }
-    }
-    int ret = 0;
-    if (delta > BLE_LATENCY_THRESHOLD_MS) {
-        LOG_INF("Performing time sync, error: %" PRId64 " ms, assumed latency: %d ms", error,
-                BLE_LATENCY_AVG_RX_MS);
-        ret = time_control_update(req_data->millis_since_epoch + BLE_LATENCY_AVG_RX_MS);
-        if (ret < 0) {
-            LOG_ERR("Failed to perform the time sync");
-        }
-    } else {
-        LOG_INF("Not performing time sync, error not significant enough");
-    }
-
+    int64_t error = 0;
+    time_control_sync(req_data->millis_since_epoch, &error);
     int16_t mv = 0;
-    ret = battery_charge_get_mv(&mv);
+    int ret = battery_charge_get_mv(&mv);
     if (ret < 0) {
         LOG_ERR("Failed to read battery voltage");
     }
-
     struct cmd_status_response* resp_data = (struct cmd_status_response*)data;
     memset(resp_data, 0, sizeof(struct cmd_status_response));
     resp_data->badge_assignment = advertised_data.badge_assignment;

@@ -176,4 +176,44 @@ struct __attribute__((packed)) cmd_download_file_chunk_response {
     int16_t bytes;  // 0 means end of file and closes file, negative encodes error code
 };
 
+/// ========= File entry formats ==============
+
+struct __attribute__((packed)) timesync_entry {
+    uint64_t reference;
+    uint64_t interpolated;
+};
+
+struct __attribute__((packed)) proximity_sensor_entry {
+    union {
+        uint8_t u8;
+        int8_t i8;
+    } rssi;
+    uint8_t mac_address[6];
+    struct custom_advertisement_data advertised_data;
+    uint64_t timestamp;
+};
+
+struct __attribute__((packed)) imu_3_axis_sample {
+    float x;
+    float y;
+    float z;
+};
+
+struct __attribute__((packed)) imu_quaternion_sample {
+    float x;  // x*sin(theta/2)
+    float y;  // y*sin(theta/2)
+    float z;  // z*sin(theta/2)
+    float w;  // cos(theta/2)
+};
+
+struct __attribute__((packed)) imu_entry {
+    uint64_t timestamp;
+    union {
+        struct imu_3_axis_sample axis;  // acc, gyro, mag
+        float axis_data[3];
+        struct imu_quaternion_sample quat;  // rotation vector
+        float quat_data[4];
+    };
+};
+
 #endif

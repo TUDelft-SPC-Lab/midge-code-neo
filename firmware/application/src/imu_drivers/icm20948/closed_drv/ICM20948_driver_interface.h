@@ -32,11 +32,11 @@ typedef enum {
 
 #define IMU_BUFFER_SIZE 16
 
-typedef struct imu_sample imu_sample_t;
+typedef struct imu_entry imu_sample_t;
 // sd_chunk is 24bytes(struct size) * IMU_BUFFER_SIZE, and we want this to be multiple of 512
 // (sdcard block size)
 
-extern struct imu_sample imu_buffer[MAX_IMU_SOURCES][2][IMU_BUFFER_SIZE];
+extern struct imu_entry imu_buffer[MAX_IMU_SOURCES][2][IMU_BUFFER_SIZE];
 
 extern const char* imu_sensor_name[MAX_IMU_SOURCES];
 

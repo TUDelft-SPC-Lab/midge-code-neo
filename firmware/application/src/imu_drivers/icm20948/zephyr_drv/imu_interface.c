@@ -24,7 +24,7 @@ enum supported_sensors {
 
 #define SENSOR_CHANNELS 3  // accel, gyro, mag
 
-static struct imu_sample imu_buffer[SENSOR_CHANNELS][2][BUFFERED_SAMPLES];
+static struct imu_entry imu_buffer[SENSOR_CHANNELS][2][BUFFERED_SAMPLES];
 
 static struct ImuWriteSamplesWork {
     struct k_work work;
@@ -35,7 +35,7 @@ static struct ImuWriteSamplesWork {
 static void imu_write_samples_work_handler(struct k_work* work) {
     struct ImuWriteSamplesWork* imu_work = CONTAINER_OF(work, struct ImuWriteSamplesWork, work);
     int buffer_index = imu_work->buffer_index;
-    size_t sz = sizeof(struct imu_sample) * BUFFERED_SAMPLES;
+    size_t sz = sizeof(struct imu_entry) * BUFFERED_SAMPLES;
     // write samples from imu_buffer[0][buffer_index], imu_buffer[1][buffer_index],
     // imu_buffer[2][buffer_index] to storage
     int ret_accel = storage_write(FILE_TYPE_ACCEL, imu_buffer[SENSOR_ACCEL][buffer_index], sz);
@@ -88,19 +88,19 @@ static int process_icm20948(const struct device* dev) {
         LOG_ERR("sample fetch/get failed: %d", rc);
     }
 
-    struct imu_sample accel_sample = {
+    struct imu_entry accel_sample = {
         .timestamp = timestamp,
         .axis = {.x = sensor_value_to_float(&accel[0]),
                  .y = sensor_value_to_float(&accel[1]),
                  .z = sensor_value_to_float(&accel[2])},
     };
-    struct imu_sample gyro_sample = {
+    struct imu_entry gyro_sample = {
         .timestamp = timestamp,
         .axis = {.x = sensor_value_to_float(&gyro[0]),
                  .y = sensor_value_to_float(&gyro[1]),
                  .z = sensor_value_to_float(&gyro[2])},
     };
-    struct imu_sample magn_sample = {
+    struct imu_entry magn_sample = {
         .timestamp = timestamp,
         .axis = {.x = sensor_value_to_float(&magn[0]),
                  .y = sensor_value_to_float(&magn[1]),

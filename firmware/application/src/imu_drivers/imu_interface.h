@@ -9,28 +9,8 @@
 
 #include <inttypes.h>
 
-struct __attribute__((packed)) imu_3_axis_sample {
-    float x;
-    float y;
-    float z;
-};
+#include "midge_protocol.h"
 
-struct __attribute__((packed)) imu_quaternion_sample {
-    float x;  // x*sin(theta/2)
-    float y;  // y*sin(theta/2)
-    float z;  // z*sin(theta/2)
-    float w;  // cos(theta/2)
-};
-
-struct imu_sample {
-    uint64_t timestamp;
-    union {
-        struct imu_3_axis_sample axis;  // acc, gyro, mag
-        float axis_data[3];
-        struct imu_quaternion_sample quat;  // rotation vector
-        float quat_data[4];
-    };
-};
 struct imu_config {
     uint16_t acc_fsr;   // g
     uint16_t gyr_fsr;   // dps
