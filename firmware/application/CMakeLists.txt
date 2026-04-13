@@ -13,11 +13,7 @@ execute_process(
 )
 
 # get the current unix timestamp
-execute_process(
-    COMMAND date +%s
-    OUTPUT_VARIABLE FW_BUILD_TIMESTAMP
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+string(TIMESTAMP FW_BUILD_TIMESTAMP "%s" UTC)
 
 
 target_include_directories(app PRIVATE
@@ -25,7 +21,7 @@ target_include_directories(app PRIVATE
 )
 # Add the commit hash as a compile definition
 add_compile_definitions(FW_VERSION="${HATCH_VERSION}")
-add_compile_definitions(FW_BUILD_TIMESTAMP=${FW_BUILD_TIMESTAMP})
+add_compile_definitions(FW_BUILD_TIMESTAMP=${FW_BUILD_TIMESTAMP}ULL)
 
 add_subdirectory(src/imu_drivers)
 

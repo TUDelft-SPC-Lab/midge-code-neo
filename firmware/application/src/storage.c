@@ -460,7 +460,7 @@ int storage_write_timesync(uint64_t reference, uint64_t interpolated) {
         return -EPERM;
     }
     char path[MAX_PATH_LEN];
-    int written = snprintf(path, MAX_PATH_LEN - 1, "%s/SYNC", active_experiment_dir);
+    int written = snprintf(path, MAX_PATH_LEN, "%s/SYNC", active_experiment_dir);
     if (written < 0 || written >= MAX_PATH_LEN) {
         LOG_ERR("failed to create timesync file path, err %d", written);
         return -ENAMETOOLONG;
@@ -483,11 +483,12 @@ int storage_write_timesync(uint64_t reference, uint64_t interpolated) {
         LOG_ERR("failed to write timesync event to file, err %d", ret);
     }
     k_yield();
-    if (fs_close(&timesync_file) < 0) {
+    ret = fs_close(&timesync_file);
+    if (ret < 0) {
         LOG_ERR("failed to close timesync file after writing event, err %d", ret);
     }
     return ret;
-};
+}
 
 // ======= Cmd Processor-facing API ====== //
 

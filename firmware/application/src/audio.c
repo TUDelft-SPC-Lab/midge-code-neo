@@ -39,7 +39,9 @@ const struct device* const dmic_dev = DEVICE_DT_GET(DT_NODELABEL(dmic_dev));
  * For now, assumes usage of PDM Mic ST MP34DT05TR-A
  */
 struct pdm_io_cfg microphone_cfg = {
-    .min_pdm_clk_freq = 1000000,  // 1MHz is incorrect but works for 16KHz recording 1200000,
+    // The mic is stated to require 1.2MHz min clock, but it has been validated
+    // to work with 1MHz which is required for 16KHz sample rate.
+    .min_pdm_clk_freq = 1000000,
     .max_pdm_clk_freq = 3250000,
     // usual value in datasheets: 40% min, 60% max, 50% typical
     .min_pdm_clk_dc = 40,
@@ -63,7 +65,7 @@ static struct {
                  .high_sample_rate = 20000,
                  .low_sample_rate_decimation = 16};
 
-struct WavFileHeader {
+struct __attribute__((packed)) WavFileHeader {
     const uint8_t file_type_bloc_id[4];  // RIFF
     uint32_t file_size;                  // size of entire file minus 8 bytes
 
@@ -88,8 +90,8 @@ struct WavFileHeader {
     //.file_size = sizeof(data + header) - 8
     .file_format_id = {'W', 'A', 'V', 'E'},
     .format_bloc_id = {'f', 'm', 't', ' '},
-    .format_bloc_size = SAMPLE_BIT_WIDTH,
-    .audio_format = 1,  // PCM
+    .format_bloc_size = 16,  // PCM,
+    .audio_format = 1,       // PCM
     // .num_channels = 2,
     //.sample_rate = 20000,
     //.byte_per_sec = byte_per_sample * num_channels * sample_rate,
@@ -260,19 +262,24 @@ static void audio_sample_process_work_handler(struct k_work* work) {
                 int channels = sensor_data.audio_config.channel.act_num_chan;
                 int step = BYTES_PER_SAMPLE * channels;
                 int decimation = sensor_data.low_sample_rate_decimation;
+                int jump = decimation * step;
                 size_t decimated_size = audio_buffer_size / decimation;
-                uint8_t subsampled_buffer[decimated_size];
-                uint8_t* subsampled_buffer_ptr = subsampled_buffer;
-                for (int i = 0; i < audio_buffer_size; i += (decimation * step)) {
+                // uint8_t subsampled_buffer[decimated_size];
+
+                uint8_t* subsampled_buffer_ptr =
+                    (uint8_t*)audio_buffer + jump;  // in place compaction;
+                for (int i = jump; i < audio_buffer_size; i += jump) {
                     memcpy(subsampled_buffer_ptr, (uint8_t*)audio_buffer + i, step);
                     subsampled_buffer_ptr += step;
                 }
-                ret = storage_write(FILE_TYPE_AUDIO, subsampled_buffer, decimated_size);
+
+                ret = storage_write(FILE_TYPE_AUDIO, audio_buffer, decimated_size);
+                wav_hdr.data_bloc_size += decimated_size;
             } else {
                 ret = storage_write(FILE_TYPE_AUDIO, audio_buffer, audio_buffer_size);
+                wav_hdr.data_bloc_size += audio_buffer_size;
             }
             k_mem_slab_free(&mem_slab, audio_buffer);
-            wav_hdr.data_bloc_size += audio_buffer_size;
             if (ret < 0) {
                 LOG_ERR("write sample failed \n");
                 // sampling will stop, file system could be compromised.
@@ -333,6 +340,30 @@ static void audio_sample_process_work_handler(struct k_work* work) {
 
 int audio_sensor_start(int sample_iter, uint16_t high_sample_rate,
                        uint16_t low_sample_rate_decimation, int mode) {
+    // Validate input parameters
+    if (mode != AUDIO_MODE_MONO && mode != AUDIO_MODE_STEREO) {
+        LOG_ERR("Invalid audio mode %d", mode);
+        return -EINVAL;
+    }
+    if (low_sample_rate_decimation == 0) {
+        LOG_ERR("Low sample rate decimation cannot be zero");
+        return -EINVAL;
+    }
+    if (high_sample_rate % low_sample_rate_decimation != 0) {
+        LOG_ERR("High sample rate must be divisible by low sample rate decimation");
+        return -EINVAL;
+    }
+    if (MAX_BLOCK_SIZE % low_sample_rate_decimation != 0) {
+        LOG_ERR("Decimation must be a factor of the max block size");
+        return -EINVAL;
+    }
+    if (high_sample_rate / low_sample_rate_decimation > 2000) {
+        LOG_ERR(
+            "The low sample rate decimation is too low. It must be high enough to produce "
+            "privacy-preserving sample rates.");
+        return -EINVAL;
+    }
+
     // Get sampling freq based on switch position
     enum privacy_sw_pos switch_pos = switch_sensor_position();
 

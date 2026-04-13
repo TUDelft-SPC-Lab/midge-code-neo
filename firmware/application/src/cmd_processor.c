@@ -40,16 +40,19 @@ int cmd_status(uint8_t* data) {
     LOG_INF("received status message");
     struct cmd_status_request* req_data = (struct cmd_status_request*)data;
     int64_t error = 0;
-    time_control_sync(req_data->millis_since_epoch, &error);
+    int ret = time_control_sync(req_data->millis_since_epoch, &error);
+    if (ret < 0) {
+        LOG_ERR("time sync failed with error %d", ret);
+    }
     int16_t mv = 0;
-    int ret = battery_charge_get_mv(&mv);
+    ret = battery_charge_get_mv(&mv);
     if (ret < 0) {
         LOG_ERR("Failed to read battery voltage");
     }
     struct cmd_status_response* resp_data = (struct cmd_status_response*)data;
     memset(resp_data, 0, sizeof(struct cmd_status_response));
     resp_data->badge_assignment = advertised_data.badge_assignment;
-    resp_data->sync_status = 0;
+    resp_data->sync_status = time_control_get_status();
     resp_data->sync_error_ms = error;
     resp_data->audio_init_status = audio_sensor_get_status();
     LOG_INF("audio sensor get status");

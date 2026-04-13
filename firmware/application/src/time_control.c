@@ -7,7 +7,7 @@
 LOG_MODULE_REGISTER(time_control);
 
 // minimum delta to do a time-sync
-// TODO THis needs a more detailed analysis. BLE message delay can be up to
+// TODO This needs a more detailed analysis. BLE message delay can be up to
 // 100ms or more in some cases, so time syncs should probably only be performed
 // after time significant enough for the internal Mingle Midge clock to drift
 // more than the BLE message delay, to ensure that the sync error value is
@@ -28,7 +28,12 @@ const struct timeutil_sync_config time_config = {
     .local_Hz = 1000,
 };
 
-static enum { TIME_NOT_SYNCED, TIME_SYNCED, TIME_ERR } status = TIME_NOT_SYNCED;
+static enum {
+    TIME_NOT_SYNCED = 0,
+    TIME_SYNCED = 1,
+    TIME_SYNCED_NO_CHANGE = 2,
+    TIME_ERR = 3,
+} status = TIME_NOT_SYNCED;
 
 int time_control_init(uint64_t ref_ms) {
     sync_state.cfg = &time_config;
@@ -83,11 +88,11 @@ int time_control_sync(uint64_t ref_ms, int64_t* error_ms) {
     uint64_t current_interpolation = time_control_get_timestamp();
     int64_t error;  // ref - interp
     int64_t delta;
-    if (current_interpolation < FW_BUILD_TIMESTAMP) {
+    if (current_interpolation < (FW_BUILD_TIMESTAMP * 1000)) {
         // time has not been synced
         error = (int64_t)ref_ms;
         delta = error;
-        LOG_WRN("Time has not been synced since boot, error value is intentionally innacurate");
+        LOG_WRN("Time has not been synced since boot, error value is intentionally inaccurate");
     } else {
         // Time was initialized, we can reasonably assume drift will not cause
         // a difference large enough to make the error value take less than 64
@@ -105,13 +110,22 @@ int time_control_sync(uint64_t ref_ms, int64_t* error_ms) {
     if (delta > BLE_LATENCY_THRESHOLD_MS) {
         LOG_INF("Performing time sync, error: %" PRId64 " ms, assumed latency: %d ms", error,
                 BLE_LATENCY_AVG_RX_MS);
-        storage_write_timesync(ref_ms, current_interpolation);
+        ret = storage_write_timesync(ref_ms, current_interpolation);
+        if (ret < 0) {
+            LOG_ERR("Failed to write time sync info to storage, status %d", ret);
+            status = TIME_ERR;
+        }
         ret = time_control_update(ref_ms + BLE_LATENCY_AVG_RX_MS);
         if (ret < 0) {
             LOG_ERR("Failed to perform the time sync");
+            status = TIME_ERR;
         }
+        status = TIME_SYNCED;
     } else {
+        status = TIME_SYNCED_NO_CHANGE;
         LOG_INF("Not performing time sync, error not significant enough");
     }
     return ret;
 }
+
+uint8_t time_control_get_status() { return (uint8_t)status; }
