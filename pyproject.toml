@@ -44,6 +44,7 @@ main_script = "midge_code_neo.main:main"
 tester = "midge_code_neo.single_tester:main_sync"
 scan_parse = "midge_code_neo.scan_parse:main"
 imu_parse = "midge_code_neo.imu_parse:main"
+timesync_parse = "midge_code_neo.timesync_parse:main"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
