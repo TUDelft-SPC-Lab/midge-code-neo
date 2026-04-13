@@ -119,8 +119,9 @@ int time_control_sync(uint64_t ref_ms, int64_t* error_ms) {
         if (ret < 0) {
             LOG_ERR("Failed to perform the time sync");
             status = TIME_ERR;
+        } else {
+            status = TIME_SYNCED;
         }
-        status = TIME_SYNCED;
     } else {
         status = TIME_SYNCED_NO_CHANGE;
         LOG_INF("Not performing time sync, error not significant enough");
