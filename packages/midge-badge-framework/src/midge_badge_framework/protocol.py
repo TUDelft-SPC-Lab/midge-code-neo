@@ -20,10 +20,11 @@ class MidgeBadgeCommandID(IntEnum):
     CMD_ID_START_IMU = ord("H")
     CMD_ID_STOP_IMU = ord("I")
     CMD_ID_ERASE_SD = ord("J")
-    CMD_ID_GET_FREE_SD_SPACE = ord("K")
-    CMD_ID_GET_FILE_INDEX_INFO = ord("L")
-    CMD_ID_GET_FILE_CRC32 = ord("M")
-    CMD_ID_DOWNLOAD_FILE_CHUNK = ord("N")
+    CMD_ID_ERASE_FILE = ord("K")
+    CMD_ID_GET_FREE_SD_SPACE = ord("L")
+    CMD_ID_GET_FILE_INDEX_INFO = ord("M")
+    CMD_ID_GET_FILE_CRC32 = ord("N")
+    CMD_ID_DOWNLOAD_FILE_CHUNK = ord("O")
 
 
 def mingle_midge_batt_mv_to_percent(mv):
@@ -119,7 +120,7 @@ class CustomAdvertisementData(Structure):
         return ret
 
 
-class CmdSetupExperimentRequest(Structure):
+class CmdSetupExperimentRequest(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [
         ("badge_assignment", BadgeAssignment),
@@ -130,9 +131,9 @@ class CmdSetupExperimentRequest(Structure):
         return MidgeBadgeCommandID.CMD_ID_SETUP_EXPERIMENT
 
 
-class CmdSetupExperimentResponse(Structure):
+class CmdSetupExperimentResponse(MidgeBadgeCommand):
     _pack_ = 1
-    _fields_ = [("status_code", c_uint8)]
+    _fields_ = [("status_code", c_int32)]
 
     def id() -> int:
         return MidgeBadgeCommandID.CMD_ID_SETUP_EXPERIMENT
@@ -300,6 +301,22 @@ class CmdEraseSDResponse(MidgeBadgeCommand):
         return MidgeBadgeCommandID.CMD_ID_ERASE_SD
 
 
+class CmdEraseFileRequest(MidgeBadgeCommand):
+    _pack_ = 1
+    _fields_ = [("path", c_uint8 * INTERFACE_MAX_FILE_NAME)]
+
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_ERASE_FILE
+
+
+class CmdEraseFileResponse(MidgeBadgeCommand):
+    _pack_ = 1
+    _fields_ = [("status_code", c_int32)]
+
+    def id() -> int:
+        return MidgeBadgeCommandID.CMD_ID_ERASE_FILE
+
+
 class CmdGetFreeSDSpaceRequest(MidgeBadgeCommand):
     _pack_ = 1
     _fields_ = [("reserved", c_uint16)]
@@ -386,6 +403,7 @@ CMD_RESPONSES: list[MidgeBadgeCommand] = [
     CmdStartIMUResponse,
     CmdStopIMUResponse,
     CmdEraseSDResponse,
+    CmdEraseFileResponse,
     CmdGetFreeSDSpaceResponse,
     CmdGetFileIndexInfoResponse,
     CmdGetFileCRC32Response,

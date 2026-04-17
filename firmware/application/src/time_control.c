@@ -47,8 +47,16 @@ int time_control_init(uint64_t ref_ms) {
     return ret;
 }
 
+int time_control_reset() {
+    status = TIME_NOT_SYNCED;
+    return 0;
+}
+
 int time_control_update(uint64_t ref_ms) {
     switch (status) {
+        case TIME_ERR:
+            LOG_WRN("There was a previous error before this time control init");
+            // fall through is intentional
         case TIME_NOT_SYNCED: {
             LOG_DBG("Time reference not initialized, call time_control_init first");
             return time_control_init(ref_ms);
@@ -58,9 +66,8 @@ int time_control_update(uint64_t ref_ms) {
             struct timeutil_sync_instant instant = {.local = k_uptime_get(), .ref = ref_ms};
             return timeutil_sync_state_update(&sync_state, &instant);
         } break;
-        case TIME_ERR:
         default:
-            LOG_ERR("Time reference in error or undefined state, call time_control_init to reset");
+            LOG_ERR("Time reference in undefined state, call time_control_init to reset");
             return -ENODEV;  // device not available
             break;
     }

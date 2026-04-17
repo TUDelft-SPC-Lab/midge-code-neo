@@ -10,6 +10,7 @@ from midge_badge_framework.protocol import (
     INTERFACE_MAX_FILE_NAME,
     BadgeAssignment,
     BadgeID,
+    CmdEraseFileRequest,
     CmdEraseSDRequest,
     CmdGetFileCRC32Request,
     CmdGetFreeSDSpaceRequest,
@@ -70,7 +71,6 @@ class MidgeBadgeConsole(cmd.Cmd):
             print("Connection successfully started!")
             self.clients.append(client)
             self.active_client = client
-            self.do_status("")
         else:
             print("Error: Failed to establish connection")
 
@@ -294,6 +294,72 @@ class MidgeBadgeConsole(cmd.Cmd):
         """
         request = CmdEraseSDRequest()
         self.__common_cmd_execute(request)
+
+    def do_erase_file(self, arg):
+        """
+        Issue an "erase-file" command which will delete a file from the Midge Badge's sd card
+        Usage:
+            erase_file <path_on_badge>
+
+        Note: <path_on_badge> should be the full path as listed by the "list_files" command, including the leading "/"
+        """
+        path = arg.strip()
+        if path == "":
+            print("Error: Invalid syntax, expected 1 argument")
+            return
+
+        if self.active_client is None:
+            print("Error: No selected client")
+            return
+
+        path_bytes = path.encode("utf-8")
+        if len(path_bytes) >= INTERFACE_MAX_FILE_NAME:
+            print("Error: Path is too long")
+            return
+        path_type = c_uint8 * INTERFACE_MAX_FILE_NAME
+        path_bytes = path_type(*path_bytes)
+        request = CmdEraseFileRequest(path_bytes)
+        self.active_client.execute_command_log_resp(request)
+
+    def do_erase_folder(self, arg):
+        """
+        Issue an "erase-folder" command which will delete a folder from the Midge Badge's sd card
+        Usage:
+            erase_folder <path_on_badge>
+
+        Note: <path_on_badge> should be the full path as listed by the "list_files" command, including the leading "/"
+        """
+        path = arg.strip()
+        if path == "":
+            print("Error: Invalid syntax, expected 1 argument")
+            return
+
+        if self.active_client is None:
+            print("Error: No selected client")
+            return
+
+        path_bytes = path.encode("utf-8")
+        if len(path_bytes) >= INTERFACE_MAX_FILE_NAME:
+            print("Error: Path is too long")
+            return
+        path_type = c_uint8 * INTERFACE_MAX_FILE_NAME
+        path_bytes = path_type(*path_bytes)
+        # verify this is a folder path
+        if not path.endswith("/"):
+            print("Error: Invalid syntax, <path_on_badge> must be a folder path (end with '/')")
+            return
+
+        # list all files, find those that start with the folder path, and issue erase file command for each of them
+        files = self.active_client.list_files(log_list=False)
+        for f in files:
+            if f.startswith(path):
+                print(f"Erasing {f}...")
+                f_bytes = f.encode("utf-8")
+                f_bytes = path_type(*f_bytes)
+                request = CmdEraseFileRequest(f_bytes)
+                self.active_client.execute_command_log_resp(request)
+        print(f"Erasing folder {path}...")
+        self.active_client.execute_command_log_resp(CmdEraseFileRequest(path_bytes))
 
     def do_get_free_sd_space(self, _):
         """

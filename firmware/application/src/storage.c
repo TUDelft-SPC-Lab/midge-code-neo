@@ -2,6 +2,8 @@
 
 #include <errno.h>
 #include <ff.h>
+#include <inttypes.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <zephyr/device.h>
 #include <zephyr/fs/fs.h>
@@ -12,6 +14,7 @@
 
 #include "midge_protocol.h"
 #include "status_led.h"
+
 #define MAX_PATH_LEN INTERFACE_MAX_FILE_NAME
 
 LOG_MODULE_REGISTER(mb_storage);
@@ -19,6 +22,16 @@ LOG_MODULE_REGISTER(mb_storage);
 static FATFS fat_fs;
 /* mounting info */
 static struct fs_mount_t mp = {.type = FS_FATFS, .fs_data = &fat_fs, .mnt_point = DISK_MOUNT_POINT};
+K_MUTEX_DEFINE(storage_mutex);
+union mb_storage_status storage_status = {.all_flags = 0};
+
+static void storage_sync_work_handler(struct k_work* work);
+static void storage_sync_timer_handler(struct k_timer* timer);
+
+K_WORK_DEFINE(storage_sync_work, storage_sync_work_handler);
+K_TIMER_DEFINE(storage_sync_timer, storage_sync_timer_handler, NULL);
+
+static char active_experiment_dir[MAX_PATH_LEN];
 
 enum mb_file_status {
     MB_FILE_STATUS_INACTIVE = 0,
@@ -47,9 +60,8 @@ struct file_info file_info_table[] = {
 };
 
 #define FILE_COUNT (sizeof(file_info_table) / (sizeof(struct file_info)))
-K_MUTEX_DEFINE(storage_mutex);
 
-enum mb_storage_status storage_status = MB_STORAGE_STATUS_UNINIT;
+uint8_t storage_get_status() { return storage_status.all_flags; }
 
 /**
  * @brief Updates the general storage status based on the individual sample file
@@ -59,32 +71,20 @@ enum mb_storage_status storage_status = MB_STORAGE_STATUS_UNINIT;
  */
 static void storage_update_status() {
     if (k_mutex_lock(&storage_mutex, K_FOREVER) == 0) {
-        switch (storage_status) {
-            case MB_STORAGE_STATUS_INIT_OK_ACTIVE:
-            case MB_STORAGE_STATUS_INIT_OK_INACTIVE: {
-                bool active = false;
-                for (int i = 0; i < FILE_COUNT; i++) {
-                    if (file_info_table[i].status != MB_FILE_STATUS_INACTIVE) {
-                        active = true;
-                        break;
-                    }
+        if (storage_status.experiment_initialized) {
+            bool active = false;
+            for (int i = 0; i < FILE_COUNT; i++) {
+                if (file_info_table[i].status != MB_FILE_STATUS_INACTIVE) {
+                    active = true;
+                    break;
                 }
-                storage_status =
-                    active ? MB_STORAGE_STATUS_INIT_OK_ACTIVE : MB_STORAGE_STATUS_INIT_OK_INACTIVE;
-                led_report_active(active);
-            } break;
-            default: {
             }
+            storage_status.sampling_active = active ? true : false;
+            led_report_active(active);
         }
         k_mutex_unlock(&storage_mutex);
     }
 }
-
-static void storage_sync_work_handler(struct k_work* work);
-static void storage_sync_timer_handler(struct k_timer* timer);
-
-K_WORK_DEFINE(storage_sync_work, storage_sync_work_handler);
-K_TIMER_DEFINE(storage_sync_timer, storage_sync_timer_handler, NULL);
 
 static void storage_sync_work_handler(struct k_work* work) {
     (void)work;
@@ -94,8 +94,7 @@ static void storage_sync_work_handler(struct k_work* work) {
         return;
     }
 
-    if ((storage_status != MB_STORAGE_STATUS_INIT_OK_ACTIVE) &&
-        (storage_status != MB_STORAGE_STATUS_INIT_OK_INACTIVE)) {
+    if (!storage_status.sampling_active) {
         k_mutex_unlock(&storage_mutex);
         return;
     }
@@ -125,48 +124,48 @@ int storage_init_fs() {
     }
 
     int res = 0;
-    if ((storage_status != MB_STORAGE_STATUS_INIT_OK_ACTIVE) &&
-        (storage_status != MB_STORAGE_STATUS_INIT_OK_INACTIVE)) {
+    if (!storage_status.fs_initialized) {
         res = fs_mount(&mp);
         if (res == FR_OK) {
-            storage_status = MB_STORAGE_STATUS_INIT_OK_INACTIVE;
+            storage_status.fs_init_err = false;
             LOG_INF("Disk mounted");
+            storage_status.fs_initialized = true;
         } else {
-            storage_status = MB_STORAGE_STATUS_INIT_ERR;
+            storage_status.fs_init_err = true;
             LOG_ERR("Error mounting disk.");
         }
     } else {
         LOG_INF("storage already initialized");
     }
+
     k_mutex_unlock(&storage_mutex);
 
-    if ((storage_status == MB_STORAGE_STATUS_INIT_OK_ACTIVE) ||
-        (storage_status == MB_STORAGE_STATUS_INIT_OK_INACTIVE)) {
+    if (storage_status.fs_initialized) {
         k_timer_start(&storage_sync_timer, K_MSEC(100), K_MSEC(100));
-    }
-
-    if (res == FR_OK) {
-        storage_init_experiment(0);
     }
     return res;
 }
 
 int storage_deinit_fs() {
     int res = 0;
-
-    if (storage_status == MB_STORAGE_STATUS_INIT_OK_ACTIVE) {
-        LOG_ERR("Cannot deinit fs while sampling is ongoing");
+    if (!storage_status.fs_initialized) {
+        LOG_INF("storage already deinitialized");
+        return res;
+    } else if (storage_status.sampling_active || storage_status.misc_op_active) {
+        LOG_ERR("Cannot deinit fs while an operation is ongoing");
         res = -EACCES;
     } else {
         k_timer_stop(&storage_sync_timer);
         struct k_work_sync storage_sync_work_sync;
         (void)k_work_cancel_sync(&storage_sync_work, &storage_sync_work_sync);
 
-        storage_status = MB_STORAGE_STATUS_UNINIT;
         if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
             LOG_ERR("could not acquire storage mutex to deinit fs");
             return -EACCES;
         }
+
+        storage_status.fs_initialized = false;
+        storage_status.experiment_initialized = false;
 
         res = fs_unmount(&mp);
         LOG_INF("Disk unmounted");
@@ -182,10 +181,12 @@ int storage_do_per_file_in_sd(per_file_cb_t cb, void* context) {
         return -EACCES;
     }
 
-    if ((storage_status != MB_STORAGE_STATUS_INIT_OK_INACTIVE)) {
+    if (!storage_status.fs_initialized || storage_status.sampling_active ||
+        storage_status.misc_op_active) {
         LOG_ERR("cannot do per file op if fs not initialized and sampling not ongoing");
         res = -EACCES;
     } else {
+        storage_status.misc_op_active = true;
         struct fs_dir_t base_dir;
         fs_dir_t_init(&base_dir);
         res = fs_opendir(&base_dir, mp.mnt_point);
@@ -237,6 +238,7 @@ int storage_do_per_file_in_sd(per_file_cb_t cb, void* context) {
             }
         }
         res = fs_closedir(&base_dir);
+        storage_status.misc_op_active = false;
         if (res < 0) {
             LOG_ERR("could not close root dir after doing per file op status: %d", res);
         }
@@ -246,28 +248,66 @@ int storage_do_per_file_in_sd(per_file_cb_t cb, void* context) {
     return res;
 }
 
-uint8_t storage_get_status() { return (uint8_t)storage_status; }
-
-static char active_experiment_dir[MAX_PATH_LEN];
-int storage_init_experiment(int id) {
+int storage_init_experiment(struct cmd_setup_experiment_request* experiment_info) {
     if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
         LOG_ERR("could not acquire storage mutex to init experiment");
         return -EACCES;
     }
     int ret = 0;
-    if (storage_status != MB_STORAGE_STATUS_INIT_OK_INACTIVE) {
-        LOG_ERR("Cannot init experiment folder while sampling is ongoing");
+    if (!storage_status.fs_initialized || storage_status.fs_init_err) {
+        LOG_ERR(
+            "Cannot init experiment folder if the file system is not initialized or init had "
+            "errors");
         ret = -EACCES;
-    } else if (snprintf(active_experiment_dir, MAX_PATH_LEN, "/" DISK_NAME ":/%d", id) >=
-               MAX_PATH_LEN) {
+    } else if (storage_status.sampling_active || storage_status.misc_op_active) {
+        LOG_ERR("Cannot init experiment folder while an operation is ongoing");
+        ret = -EACCES;
+    } else if (snprintf(active_experiment_dir, MAX_PATH_LEN, "/" DISK_NAME ":/%d",
+                        experiment_info->experiment_id) >= MAX_PATH_LEN) {
         ret = -ENAMETOOLONG;
     } else {
+        // stat to make sure the dir doesn't already exist
+        struct fs_dirent dir_stat;
+        ret = fs_stat(active_experiment_dir, &dir_stat);
+        if (ret == 0) {
+            LOG_ERR("Experiment folder for id %d already exists", experiment_info->experiment_id);
+            k_mutex_unlock(&storage_mutex);
+            return -EEXIST;
+        } else if (ret != -ENOENT) {
+            LOG_ERR("Error checking if experiment folder for id %d exists, err %d",
+                    experiment_info->experiment_id, ret);
+            k_mutex_unlock(&storage_mutex);
+            return ret;
+        }
+
         LOG_INF("creating experiment folder %s", active_experiment_dir);
         ret = fs_mkdir(active_experiment_dir);
         if ((ret != 0) && (ret != -EEXIST)) {
             LOG_ERR("Unknown error trying to create folder");
         }
-        LOG_INF("Experiment folder created: %d", id);
+        LOG_INF("Experiment folder created: %d", experiment_info->experiment_id);
+        storage_status.experiment_initialized = true;
+
+        // create metadata file for badge assignment info
+        char meta_path[MAX_PATH_LEN * 2];
+        snprintf(meta_path, sizeof(meta_path), "%s/ID.txt", active_experiment_dir);
+        struct fs_file_t meta_file;
+        fs_file_t_init(&meta_file);
+        ret = fs_open(&meta_file, meta_path, FS_O_CREATE | FS_O_WRITE);
+        if (ret < 0) {
+            LOG_ERR("failed to create badge assignment metadata file, err %d", ret);
+        } else {
+            char badge_assignment_str[128];
+            snprintf(badge_assignment_str, sizeof(badge_assignment_str),
+                     "Badge Assignment: group_id - %u badge_id - %u\n",
+                     experiment_info->badge_assignment.badge_id.group,
+                     experiment_info->badge_assignment.badge_id.badge);
+            ret = fs_write(&meta_file, badge_assignment_str, strlen(badge_assignment_str));
+            if (ret < 0) {
+                LOG_ERR("failed to write badge assignment info to metadata file, err %d", ret);
+            }
+            fs_close(&meta_file);
+        }
     }
     k_mutex_unlock(&storage_mutex);
     return ret;
@@ -275,12 +315,14 @@ int storage_init_experiment(int id) {
 
 int storage_erase(char* path) {
     int res;
-    if (storage_status != MB_STORAGE_STATUS_INIT_OK_INACTIVE) {
+    if (storage_status.sampling_active || storage_status.misc_op_active) {
         return -EACCES;
     }
+
     if (strcmp(path, mp.mnt_point) == 0) {
         LOG_INF("erasing %s", path);
         res = storage_deinit_fs();
+        storage_status.misc_op_active = true;
         if (res < 0) {
             LOG_ERR("could not unmount , errno: %d", res);
             return res;
@@ -291,16 +333,13 @@ int storage_erase(char* path) {
             return -EACCES;
         }
 
-        if (storage_status != MB_STORAGE_STATUS_UNINIT) {
-            res = -EACCES;
+        res = fs_mkfs(FS_FATFS, (uintptr_t)DISK_NAME ":", NULL, 0);
+        if (res < 0) {
+            LOG_ERR("Error formating persistent storage %d", res);
         } else {
-            res = fs_mkfs(FS_FATFS, (uintptr_t)DISK_NAME ":", NULL, 0);
-            if (res < 0) {
-                LOG_ERR("Error formating persistent storage %d", res);
-            } else {
-                LOG_INF("Disk formatted");
-            }
+            LOG_INF("Disk formatted");
         }
+
         k_mutex_unlock(&storage_mutex);
 
         if (res == 0) {
@@ -310,10 +349,19 @@ int storage_erase(char* path) {
             }
         }
     } else {
+        storage_status.misc_op_active = true;
         // other path provided
         printf("about to delete %s\n", path);
         struct fs_dirent file_stat;
         res = fs_stat(path, &file_stat);
+
+        // check if we are trying to delete the current experiment folder
+        int cmp_res = strncmp(path, active_experiment_dir, strlen(active_experiment_dir));
+        if (cmp_res == 0) {
+            LOG_WRN("Trying to erase active experiment folder %s", path);
+            storage_status.experiment_initialized = false;
+        }
+
         if (res < 0) {
             LOG_ERR("could not stat file %s to erase, err %d", path, res);
         } else {
@@ -327,6 +375,8 @@ int storage_erase(char* path) {
         }
     }
 
+    storage_status.misc_op_active = false;
+
     return res;
 }
 
@@ -334,21 +384,26 @@ int storage_erase(char* path) {
 
 // assumes experiment was already initialized
 int storage_init_sample_file(enum mb_file_type file_type, int sample_iter) {
-    if ((storage_status == MB_STORAGE_STATUS_UNINIT) ||
-        (storage_status == MB_STORAGE_STATUS_INIT_ERR)) {
+    if (!storage_status.fs_initialized || storage_status.fs_init_err) {
         LOG_ERR("cannot init sample file! fs not initialized!");
         return -EPERM;
-    }
-    if (file_type > FILE_TYPE_MAX) {
+    } else if (storage_status.misc_op_active) {
+        LOG_ERR("cannot init sample file! another misc operation is ongoing!");
+        return -EACCES;
+    } else if (!storage_status.experiment_initialized) {
+        LOG_ERR("cannot init sample file! experiment not initialized!");
+        return -EPERM;
+    } else if (file_type > FILE_TYPE_MAX) {
+        LOG_ERR("invalid file type %d, cannot init sample file", file_type);
         return -EINVAL;
-    }
-
-    if (file_info_table[file_type].status == MB_FILE_STATUS_ACTIVE) {
+    } else if (file_info_table[file_type].status == MB_FILE_STATUS_ACTIVE) {
+        LOG_ERR("file of type %d is already active", file_type);
         return -EINPROGRESS;
     }
+    storage_status.misc_op_active = true;
 
     if (file_info_table[file_type].status == MB_FILE_STATUS_ERR) {
-        LOG_ERR("file of type %d init after err", file_type);
+        LOG_WRN("file of type %d init after err", file_type);
     }
 
     int ret;
@@ -387,15 +442,34 @@ int storage_init_sample_file(enum mb_file_type file_type, int sample_iter) {
             fmt = fmt_rotation;
         } break;
         default: {
+            storage_status.misc_op_active = false;
             return -EINVAL;
         }
     }
     char path[MAX_PATH_LEN];
     snprintf(path, MAX_PATH_LEN, fmt, active_experiment_dir, sample_iter);
+
+    struct fs_dirent file_stat;
+    ret = fs_stat(path, &file_stat);
+    if (ret == 0) {
+        storage_status.misc_op_active = false;
+        return -EEXIST;  // file already exists, don't overwrite
+    } else if (ret != -ENOENT) {
+        LOG_ERR("Error checking if sample file for type %d already exists, err %d", file_type, ret);
+        storage_status.misc_op_active = false;
+        return ret;
+    }
+
     LOG_INF("Trying to open file: %s", path);
     ret = fs_open(&file_info_table[file_type].file, path, FS_O_CREATE | FS_O_WRITE);
+    if (ret < 0) {
+        LOG_ERR("failed to open file for type %d at path %s, err %d", file_type, path, ret);
+    } else {
+        LOG_INF("File opened for type %d at path %s", file_type, path);
+    }
     file_info_table[file_type].status = (ret < 0) ? MB_FILE_STATUS_ERR : MB_FILE_STATUS_ACTIVE;
     file_info_table[file_type].ret_last = ret;
+    storage_status.misc_op_active = false;
     storage_update_status();
     return ret;
 }
@@ -454,8 +528,7 @@ int storage_seek_start(enum mb_file_type file_type) {
 }
 
 int storage_write_timesync(uint64_t reference, uint64_t interpolated) {
-    if ((storage_status == MB_STORAGE_STATUS_UNINIT) ||
-        (storage_status == MB_STORAGE_STATUS_INIT_ERR)) {
+    if (!storage_status.experiment_initialized) {
         LOG_ERR("Experiment storage not initialized");
         return -EPERM;
     }
@@ -474,7 +547,8 @@ int storage_write_timesync(uint64_t reference, uint64_t interpolated) {
     }
     struct timesync_entry entry = {.reference = reference, .interpolated = interpolated};
     // uint8_t buff[64];
-    //  snprintf((char*)buff, sizeof(buff), "ref: %" PRIu64 ", interp: %" PRIu64 "\n", reference,
+    //  snprintf((char*)buff, sizeof(buff), "ref: %" PRIu64 ", interp: %" PRIu64 "\n",
+    //  reference,
     //           interpolated);
     k_yield();
     // ret = fs_write(&timesync_file, buff, strlen((char*)buff));
@@ -500,8 +574,18 @@ int cmd_erase_sd(uint8_t* data) {
     return ret;
 }
 
+int cmd_erase_file(uint8_t* data) {
+    struct cmd_erase_file_request* req_data = (struct cmd_erase_file_request*)data;
+    struct cmd_erase_file_response* resp_data = (struct cmd_erase_file_response*)data;
+    req_data->path[INTERFACE_MAX_FILE_NAME - 1] = '\0';  // ensure null termination
+    int ret = storage_erase((char*)req_data->path);
+    resp_data->status_code = ret;
+    return ret;
+}
+
 int cmd_get_free_sd_space(uint8_t* data) {
-    // struct cmd_get_free_sd_space_request* req_data = (struct cmd_get_free_sd_space_request*)data;
+    // struct cmd_get_free_sd_space_request* req_data = (struct
+    // cmd_get_free_sd_space_request*)data;
     struct cmd_get_free_sd_space_response* resp_data = (struct cmd_get_free_sd_space_response*)data;
     struct fs_statvfs stat;
     int res = fs_statvfs(mp.mnt_point, &stat);

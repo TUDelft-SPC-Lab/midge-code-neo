@@ -2,18 +2,24 @@
 #define MBFW_STORAGE_H
 
 #include <inttypes.h>
+#include <stdbool.h>
 #include <stddef.h>
+
+#include "midge_protocol.h"
 
 #define DISK_NAME "SD"
 #define DISK_MOUNT_POINT "/" DISK_NAME ":"
 // static const char* disk_pdrv = DISK_NAME;              // for IOCTL operations
 
-enum mb_storage_status {
-    MB_STORAGE_STATUS_UNINIT = 0,
-    MB_STORAGE_STATUS_INIT_OK_INACTIVE = 1,
-    MB_STORAGE_STATUS_INIT_OK_ACTIVE = 2,
-    MB_STORAGE_STATUS_INIT_OK_MISC_OP_ACTIVE = 3,
-    MB_STORAGE_STATUS_INIT_ERR = 4,
+union mb_storage_status {
+    struct {
+        bool fs_initialized : 1;
+        bool fs_init_err : 1;
+        bool experiment_initialized : 1;
+        bool misc_op_active : 1;
+        bool sampling_active : 1;
+    };
+    uint8_t all_flags;
 };
 
 enum mb_file_type {
@@ -35,7 +41,7 @@ int storage_deinit_fs();
 
 uint8_t storage_get_status();
 
-int storage_init_experiment(int id);
+int storage_init_experiment(struct cmd_setup_experiment_request* experiment_info);
 
 typedef int (*per_file_cb_t)(char* file_path, int16_t index, void* context);
 
@@ -82,6 +88,8 @@ int storage_seek_start(enum mb_file_type file_type);
 int storage_write_timesync(uint64_t reference, uint64_t interpolated);
 
 int cmd_erase_sd(uint8_t* data);
+
+int cmd_erase_file(uint8_t* data);
 
 int cmd_get_free_sd_space(uint8_t* data);
 

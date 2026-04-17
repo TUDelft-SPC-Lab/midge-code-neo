@@ -34,10 +34,11 @@ enum CmdID {
     CMD_ID_START_IMU = 'H',
     CMD_ID_STOP_IMU = 'I',
     CMD_ID_ERASE_SD = 'J',
-    CMD_ID_GET_FREE_SD_SPACE = 'K',
-    CMD_ID_GET_FILE_INDEX_INFO = 'L',
-    CMD_ID_GET_FILE_CRC32 = 'M',
-    CMD_ID_DOWNLOAD_FILE_CHUNK = 'N'
+    CMD_ID_ERASE_FILE = 'K',
+    CMD_ID_GET_FREE_SD_SPACE = 'L',
+    CMD_ID_GET_FILE_INDEX_INFO = 'M',
+    CMD_ID_GET_FILE_CRC32 = 'N',
+    CMD_ID_DOWNLOAD_FILE_CHUNK = 'O'
 };
 
 // ==== Protocol messages =========== //
@@ -47,7 +48,7 @@ struct __attribute__((packed)) cmd_setup_experiment_request {
 };
 
 struct __attribute__((packed)) cmd_setup_experiment_response {
-    uint8_t status_code;
+    int32_t status_code;
 };
 
 // uint16_t configured_datarate
@@ -135,6 +136,14 @@ struct __attribute__((packed)) cmd_erase_sd_request {
 };
 
 struct __attribute__((packed)) cmd_erase_sd_response {
+    int32_t status_code;
+};
+
+struct __attribute__((packed)) cmd_erase_file_request {
+    uint8_t path[INTERFACE_MAX_FILE_NAME];
+};
+
+struct __attribute__((packed)) cmd_erase_file_response {
     int32_t status_code;
 };
 

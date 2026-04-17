@@ -28,10 +28,13 @@ struct custom_advertisement_data advertised_data = {
 int cmd_setup_experiment(uint8_t* data) {
     struct cmd_setup_experiment_request* req_data = (struct cmd_setup_experiment_request*)data;
     struct cmd_setup_experiment_response* resp_data = (struct cmd_setup_experiment_response*)data;
-
     advertised_data.badge_assignment = req_data->badge_assignment;
-    int ret = storage_init_experiment(req_data->experiment_id);
-
+    int ret = storage_init_experiment(req_data);
+    if (ret < 0) {
+        LOG_ERR("Failed to initialize experiment");
+    } else {
+        time_control_reset();
+    }
     resp_data->status_code = ret;
     return ret;
 }
@@ -40,10 +43,12 @@ int cmd_status(uint8_t* data) {
     LOG_INF("received status message");
     struct cmd_status_request* req_data = (struct cmd_status_request*)data;
     int64_t error = 0;
+
     int ret = time_control_sync(req_data->millis_since_epoch, &error);
     if (ret < 0) {
         LOG_ERR("time sync failed with error %d", ret);
     }
+
     int16_t mv = 0;
     ret = battery_charge_get_mv(&mv);
     if (ret < 0) {
@@ -105,6 +110,8 @@ struct cmd_processor_lut_entry commands[] = {
      cmd_stop_imu},
     {CMD_ID_ERASE_SD, sizeof(struct cmd_erase_sd_request), sizeof(struct cmd_erase_sd_response),
      cmd_erase_sd},
+    {CMD_ID_ERASE_FILE, sizeof(struct cmd_erase_file_request),
+     sizeof(struct cmd_erase_file_response), cmd_erase_file},
     {CMD_ID_GET_FREE_SD_SPACE, sizeof(struct cmd_get_free_sd_space_request),
      sizeof(struct cmd_get_free_sd_space_response), cmd_get_free_sd_space},
     {CMD_ID_GET_FILE_INDEX_INFO, sizeof(struct cmd_get_file_index_info_request),

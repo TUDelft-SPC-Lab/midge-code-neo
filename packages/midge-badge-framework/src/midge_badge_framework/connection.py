@@ -205,9 +205,9 @@ class MidgeBadgeClient:
 
     # Utility functions for complex behavior
 
-    def list_files(self):
+    def list_files(self, log_list=True):
         index = 0
-
+        paths = []
         while True:
             request = CmdGetFileIndexInfoRequest(index)
             self.send_command(request)
@@ -217,8 +217,11 @@ class MidgeBadgeClient:
                 # logger.error("File not found? %s", response.index)
                 break
             path_str = bytes(response.path).rstrip(b"\x00").decode("utf-8")
-            logger.info("%s %s bytes", path_str, response.size_bytes)
+            paths.append(path_str)
+            if log_list:
+                logger.info("%s %s bytes", path_str, response.size_bytes)
             index += 1
+        return paths
 
     def download_file(self, path: str, outfile: str):
         path_bytes = path.encode("utf-8")
