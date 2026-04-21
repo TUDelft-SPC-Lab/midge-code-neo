@@ -682,6 +682,56 @@ int storage_write_timesync(uint64_t reference, uint64_t interpolated) {
     return ret;
 }
 
+int storage_seek_start(enum mb_file_type file_type) {
+    if (file_info_table[file_type].status != MB_FILE_STATUS_ACTIVE) {
+        LOG_ERR("cannot seek in file type %d with status %d", file_type,
+                file_info_table[file_type].status);
+        return -EACCES;
+    }
+    int ret = fs_seek(&file_info_table[file_type].file, 0, FS_SEEK_SET);
+    if (ret < 0) {
+        LOG_ERR("failed to seek to start of file type %d, err %d", file_type, ret);
+    }
+    return ret;
+}
+
+int storage_write_timesync(uint64_t reference, uint64_t interpolated) {
+    if ((storage_status == MB_STORAGE_STATUS_UNINIT) ||
+        (storage_status == MB_STORAGE_STATUS_INIT_ERR)) {
+        LOG_ERR("Experiment storage not initialized");
+        return -EPERM;
+    }
+    char path[MAX_PATH_LEN];
+    int written = snprintf(path, MAX_PATH_LEN, "%s/SYNC", active_experiment_dir);
+    if (written < 0 || written >= MAX_PATH_LEN) {
+        LOG_ERR("failed to create timesync file path, err %d", written);
+        return -ENAMETOOLONG;
+    }
+    struct fs_file_t timesync_file;
+    fs_file_t_init(&timesync_file);
+    int ret = fs_open(&timesync_file, path, FS_O_CREATE | FS_O_APPEND | FS_O_WRITE);
+    if (ret < 0) {
+        LOG_ERR("failed to open timesync file to write timesync event %s, err %d", path, ret);
+        return ret;
+    }
+    struct timesync_entry entry = {.reference = reference, .interpolated = interpolated};
+    // uint8_t buff[64];
+    //  snprintf((char*)buff, sizeof(buff), "ref: %" PRIu64 ", interp: %" PRIu64 "\n", reference,
+    //           interpolated);
+    k_yield();
+    // ret = fs_write(&timesync_file, buff, strlen((char*)buff));
+    ret = fs_write(&timesync_file, &entry, sizeof(entry));
+    if (ret < 0) {
+        LOG_ERR("failed to write timesync event to file, err %d", ret);
+    }
+    k_yield();
+    ret = fs_close(&timesync_file);
+    if (ret < 0) {
+        LOG_ERR("failed to close timesync file after writing event, err %d", ret);
+    }
+    return ret;
+}
+
 // ======= Cmd Processor-facing API ====== //
 
 int cmd_erase_sd(uint8_t* data) {

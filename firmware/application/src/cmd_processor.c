@@ -43,12 +43,10 @@ int cmd_status(uint8_t* data) {
     LOG_INF("received status message");
     struct cmd_status_request* req_data = (struct cmd_status_request*)data;
     int64_t error = 0;
-
     int ret = time_control_sync(req_data->millis_since_epoch, &error);
     if (ret < 0) {
         LOG_ERR("time sync failed with error %d", ret);
     }
-
     int16_t mv = 0;
     ret = battery_charge_get_mv(&mv);
     if (ret < 0) {
