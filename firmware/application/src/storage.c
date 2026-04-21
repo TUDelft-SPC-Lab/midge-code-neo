@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <zephyr/device.h>
 #include <zephyr/fs/fs.h>
 #include <zephyr/kernel.h>
@@ -61,29 +62,38 @@ struct file_info file_info_table[] = {
 
 #define FILE_COUNT (sizeof(file_info_table) / (sizeof(struct file_info)))
 
-uint8_t storage_get_status() { return storage_status.all_flags; }
+static bool storage_is_valid_file_type(enum mb_file_type file_type) {
+    return (file_type >= FILE_TYPE_PROXIMITY) && (file_type < FILE_TYPE_MAX);
+}
 
-/**
- * @brief Updates the general storage status based on the individual sample file
- * statuses. If there is at least one ongoing sampling task (i.e. a file is
- * active) the led shall remain ON.
- *
- */
-static void storage_update_status() {
-    if (k_mutex_lock(&storage_mutex, K_FOREVER) == 0) {
-        if (storage_status.experiment_initialized) {
-            bool active = false;
-            for (int i = 0; i < FILE_COUNT; i++) {
-                if (file_info_table[i].status != MB_FILE_STATUS_INACTIVE) {
-                    active = true;
-                    break;
-                }
-            }
-            storage_status.sampling_active = active ? true : false;
-            led_report_active(active);
-        }
-        k_mutex_unlock(&storage_mutex);
+static void storage_update_status_locked() {
+    if (!storage_status.experiment_initialized) {
+        storage_status.sampling_active = false;
+        led_report_active(false);
+        return;
     }
+
+    bool active = false;
+    for (int i = 0; i < FILE_COUNT; i++) {
+        if (file_info_table[i].status != MB_FILE_STATUS_INACTIVE) {
+            active = true;
+            break;
+        }
+    }
+    storage_status.sampling_active = active;
+    led_report_active(active);
+}
+
+uint8_t storage_get_status() {
+    uint8_t status = 0;
+    if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
+        LOG_ERR("could not acquire storage mutex to get status");
+        return 0;
+    }
+
+    status = storage_status.all_flags;
+    k_mutex_unlock(&storage_mutex);
+    return status;
 }
 
 static void storage_sync_work_handler(struct k_work* work) {
@@ -124,12 +134,14 @@ int storage_init_fs() {
     }
 
     int res = 0;
+    bool start_sync_timer = false;
     if (!storage_status.fs_initialized) {
         res = fs_mount(&mp);
         if (res == FR_OK) {
             storage_status.fs_init_err = false;
             LOG_INF("Disk mounted");
             storage_status.fs_initialized = true;
+            start_sync_timer = true;
         } else {
             storage_status.fs_init_err = true;
             LOG_ERR("Error mounting disk.");
@@ -140,37 +152,56 @@ int storage_init_fs() {
 
     k_mutex_unlock(&storage_mutex);
 
-    if (storage_status.fs_initialized) {
+    if (start_sync_timer) {
         k_timer_start(&storage_sync_timer, K_MSEC(100), K_MSEC(100));
     }
     return res;
 }
 
 int storage_deinit_fs() {
+    if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
+        LOG_ERR("could not acquire storage mutex to deinit fs");
+        return -EACCES;
+    }
+
     int res = 0;
     if (!storage_status.fs_initialized) {
         LOG_INF("storage already deinitialized");
-        return res;
-    } else if (storage_status.sampling_active || storage_status.misc_op_active) {
-        LOG_ERR("Cannot deinit fs while an operation is ongoing");
-        res = -EACCES;
-    } else {
-        k_timer_stop(&storage_sync_timer);
-        struct k_work_sync storage_sync_work_sync;
-        (void)k_work_cancel_sync(&storage_sync_work, &storage_sync_work_sync);
-
-        if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
-            LOG_ERR("could not acquire storage mutex to deinit fs");
-            return -EACCES;
-        }
-
-        storage_status.fs_initialized = false;
-        storage_status.experiment_initialized = false;
-
-        res = fs_unmount(&mp);
-        LOG_INF("Disk unmounted");
         k_mutex_unlock(&storage_mutex);
+        return 0;
     }
+
+    if (storage_status.sampling_active || storage_status.misc_op_active) {
+        LOG_ERR("Cannot deinit fs while an operation is ongoing");
+        k_mutex_unlock(&storage_mutex);
+        return -EACCES;
+    }
+
+    storage_status.misc_op_active = true;
+    k_mutex_unlock(&storage_mutex);
+
+    k_timer_stop(&storage_sync_timer);
+    struct k_work_sync storage_sync_work_sync;
+    (void)k_work_cancel_sync(&storage_sync_work, &storage_sync_work_sync);
+
+    if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
+        LOG_ERR("could not acquire storage mutex to finalize deinit fs");
+        return -EACCES;
+    }
+
+    storage_status.fs_initialized = false;
+    storage_status.experiment_initialized = false;
+    storage_update_status_locked();
+
+    res = fs_unmount(&mp);
+    if (res < 0) {
+        LOG_ERR("Error unmounting disk, err %d", res);
+    } else {
+        LOG_INF("Disk unmounted");
+    }
+    storage_status.misc_op_active = false;
+    k_mutex_unlock(&storage_mutex);
+
     return res;
 }
 
@@ -183,7 +214,7 @@ int storage_do_per_file_in_sd(per_file_cb_t cb, void* context) {
 
     if (!storage_status.fs_initialized || storage_status.sampling_active ||
         storage_status.misc_op_active) {
-        LOG_ERR("cannot do per file op if fs not initialized and sampling not ongoing");
+        LOG_ERR("cannot do per file op if fs not initialized or an fs op is ongoing");
         res = -EACCES;
     } else {
         storage_status.misc_op_active = true;
@@ -236,12 +267,12 @@ int storage_do_per_file_in_sd(per_file_cb_t cb, void* context) {
                             res);
                 }
             }
+            res = fs_closedir(&base_dir);
+            if (res < 0) {
+                LOG_ERR("could not close root dir after doing per file op status: %d", res);
+            }
         }
-        res = fs_closedir(&base_dir);
         storage_status.misc_op_active = false;
-        if (res < 0) {
-            LOG_ERR("could not close root dir after doing per file op status: %d", res);
-        }
     }
 
     k_mutex_unlock(&storage_mutex);
@@ -310,24 +341,36 @@ int storage_init_experiment(struct cmd_setup_experiment_request* experiment_info
         }
     }
     k_mutex_unlock(&storage_mutex);
-    return ret;
+    return 0;
 }
 
 int storage_erase(char* path) {
-    int res;
-    if (storage_status.sampling_active || storage_status.misc_op_active) {
+    if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
+        LOG_ERR("could not acquire storage mutex to erase");
         return -EACCES;
     }
 
-    if (strcmp(path, mp.mnt_point) == 0) {
+    if (storage_status.sampling_active || storage_status.misc_op_active) {
+        k_mutex_unlock(&storage_mutex);
+        return -EACCES;
+    }
+
+    bool erase_whole_fs = (strcmp(path, mp.mnt_point) == 0);
+    if (!erase_whole_fs) {
+        storage_status.misc_op_active = true;
+    }
+    k_mutex_unlock(&storage_mutex);
+
+    int res;
+
+    if (erase_whole_fs) {
         LOG_INF("erasing %s", path);
         res = storage_deinit_fs();
-        storage_status.misc_op_active = true;
         if (res < 0) {
             LOG_ERR("could not unmount , errno: %d", res);
             return res;
         }
-        // check files are closed
+
         if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
             LOG_ERR("could not acquire storage mutex to erase");
             return -EACCES;
@@ -348,9 +391,17 @@ int storage_erase(char* path) {
                 LOG_ERR("failed to init fs after formatting");
             }
         }
+
+        if (k_mutex_lock(&storage_mutex, K_FOREVER) == 0) {
+            storage_status.misc_op_active = false;
+            k_mutex_unlock(&storage_mutex);
+        }
     } else {
-        storage_status.misc_op_active = true;
-        // other path provided
+        if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
+            LOG_ERR("could not acquire storage mutex to erase path");
+            return -EACCES;
+        }
+
         printf("about to delete %s\n", path);
         struct fs_dirent file_stat;
         res = fs_stat(path, &file_stat);
@@ -373,9 +424,11 @@ int storage_erase(char* path) {
                 LOG_ERR("could not erase target %s err %d", path, res);
             }
         }
-    }
 
-    storage_status.misc_op_active = false;
+        storage_status.misc_op_active = false;
+        storage_update_status_locked();
+        k_mutex_unlock(&storage_mutex);
+    }
 
     return res;
 }
@@ -384,20 +437,30 @@ int storage_erase(char* path) {
 
 // assumes experiment was already initialized
 int storage_init_sample_file(enum mb_file_type file_type, int sample_iter) {
+    if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
+        LOG_ERR("could not acquire storage mutex to init sample file");
+        return -EACCES;
+    }
+
     if (!storage_status.fs_initialized || storage_status.fs_init_err) {
         LOG_ERR("cannot init sample file! fs not initialized!");
+        k_mutex_unlock(&storage_mutex);
         return -EPERM;
     } else if (storage_status.misc_op_active) {
         LOG_ERR("cannot init sample file! another misc operation is ongoing!");
+        k_mutex_unlock(&storage_mutex);
         return -EACCES;
     } else if (!storage_status.experiment_initialized) {
         LOG_ERR("cannot init sample file! experiment not initialized!");
+        k_mutex_unlock(&storage_mutex);
         return -EPERM;
-    } else if (file_type > FILE_TYPE_MAX) {
+    } else if (!storage_is_valid_file_type(file_type)) {
         LOG_ERR("invalid file type %d, cannot init sample file", file_type);
+        k_mutex_unlock(&storage_mutex);
         return -EINVAL;
     } else if (file_info_table[file_type].status == MB_FILE_STATUS_ACTIVE) {
         LOG_ERR("file of type %d is already active", file_type);
+        k_mutex_unlock(&storage_mutex);
         return -EINPROGRESS;
     }
     storage_status.misc_op_active = true;
@@ -443,6 +506,7 @@ int storage_init_sample_file(enum mb_file_type file_type, int sample_iter) {
         } break;
         default: {
             storage_status.misc_op_active = false;
+            k_mutex_unlock(&storage_mutex);
             return -EINVAL;
         }
     }
@@ -453,10 +517,12 @@ int storage_init_sample_file(enum mb_file_type file_type, int sample_iter) {
     ret = fs_stat(path, &file_stat);
     if (ret == 0) {
         storage_status.misc_op_active = false;
+        k_mutex_unlock(&storage_mutex);
         return -EEXIST;  // file already exists, don't overwrite
     } else if (ret != -ENOENT) {
         LOG_ERR("Error checking if sample file for type %d already exists, err %d", file_type, ret);
         storage_status.misc_op_active = false;
+        k_mutex_unlock(&storage_mutex);
         return ret;
     }
 
@@ -470,38 +536,65 @@ int storage_init_sample_file(enum mb_file_type file_type, int sample_iter) {
     file_info_table[file_type].status = (ret < 0) ? MB_FILE_STATUS_ERR : MB_FILE_STATUS_ACTIVE;
     file_info_table[file_type].ret_last = ret;
     storage_status.misc_op_active = false;
-    storage_update_status();
+    storage_update_status_locked();
+    k_mutex_unlock(&storage_mutex);
     return ret;
 }
 
 uint16_t storage_get_active_sensor_bitflags() {
+    if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
+        LOG_ERR("could not acquire storage mutex to get active sensor bitflags");
+        return 0;
+    }
+
     uint16_t bitflags = 0;
     for (int i = 0; i < FILE_COUNT; i++) {
         if (file_info_table[i].status == MB_FILE_STATUS_ACTIVE) {
             bitflags |= (1 << file_info_table[i].type);
         }
     }
+
+    k_mutex_unlock(&storage_mutex);
     return bitflags;
 }
 
 int storage_write(enum mb_file_type file_type, void* data, size_t size) {
+    if (!storage_is_valid_file_type(file_type)) {
+        LOG_ERR("invalid file type %d for write", file_type);
+        return -EINVAL;
+    }
+
+    if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
+        LOG_ERR("could not acquire storage mutex to write file");
+        return -EACCES;
+    }
+
     if (file_info_table[file_type].status == MB_FILE_STATUS_ERR) {
         LOG_ERR("write to file_type %d with err status %d", file_type,
                 file_info_table[file_type].ret_last);
     }
     if (file_info_table[file_type].status == MB_FILE_STATUS_INACTIVE) {
         LOG_ERR("write to unopened file_type %d", file_type);
+        k_mutex_unlock(&storage_mutex);
+        return -EACCES;
     }
+
     int ret = fs_write(&file_info_table[file_type].file, data, size);
 #ifdef STORAGE_DMA_NOT_ENABLED
     fs_sync(&file_info_table[file_type].file);
 #endif
     file_info_table[file_type].status = (ret < 0) ? MB_FILE_STATUS_ERR : MB_FILE_STATUS_ACTIVE;
     file_info_table[file_type].ret_last = ret;
+    k_mutex_unlock(&storage_mutex);
     return ret;
 }
 
 int storage_close(enum mb_file_type file_type) {
+    if (!storage_is_valid_file_type(file_type)) {
+        LOG_ERR("invalid file type %d for close", file_type);
+        return -EINVAL;
+    }
+
     if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
         LOG_ERR("could not acquire storage mutex to close file");
         return -EACCES;
@@ -509,33 +602,55 @@ int storage_close(enum mb_file_type file_type) {
     int ret = fs_close(&file_info_table[file_type].file);
     file_info_table[file_type].status = (ret < 0) ? MB_FILE_STATUS_ERR : MB_FILE_STATUS_INACTIVE;
     file_info_table[file_type].ret_last = ret;
+    storage_update_status_locked();
     k_mutex_unlock(&storage_mutex);
-    storage_update_status();
     return ret;
 }
 
 int storage_seek_start(enum mb_file_type file_type) {
+    if (!storage_is_valid_file_type(file_type)) {
+        LOG_ERR("invalid file type %d for seek", file_type);
+        return -EINVAL;
+    }
+
+    if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
+        LOG_ERR("could not acquire storage mutex to seek file");
+        return -EACCES;
+    }
+
     if (file_info_table[file_type].status != MB_FILE_STATUS_ACTIVE) {
         LOG_ERR("cannot seek in file type %d with status %d", file_type,
                 file_info_table[file_type].status);
+        k_mutex_unlock(&storage_mutex);
         return -EACCES;
     }
+
     int ret = fs_seek(&file_info_table[file_type].file, 0, FS_SEEK_SET);
     if (ret < 0) {
         LOG_ERR("failed to seek to start of file type %d, err %d", file_type, ret);
     }
+
+    k_mutex_unlock(&storage_mutex);
     return ret;
 }
 
 int storage_write_timesync(uint64_t reference, uint64_t interpolated) {
+    if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
+        LOG_ERR("could not acquire storage mutex to write timesync");
+        return -EACCES;
+    }
+
     if (!storage_status.experiment_initialized) {
         LOG_ERR("Experiment storage not initialized");
+        k_mutex_unlock(&storage_mutex);
         return -EPERM;
     }
+
     char path[MAX_PATH_LEN];
     int written = snprintf(path, MAX_PATH_LEN, "%s/SYNC", active_experiment_dir);
     if (written < 0 || written >= MAX_PATH_LEN) {
         LOG_ERR("failed to create timesync file path, err %d", written);
+        k_mutex_unlock(&storage_mutex);
         return -ENAMETOOLONG;
     }
     struct fs_file_t timesync_file;
@@ -543,6 +658,7 @@ int storage_write_timesync(uint64_t reference, uint64_t interpolated) {
     int ret = fs_open(&timesync_file, path, FS_O_CREATE | FS_O_APPEND | FS_O_WRITE);
     if (ret < 0) {
         LOG_ERR("failed to open timesync file to write timesync event %s, err %d", path, ret);
+        k_mutex_unlock(&storage_mutex);
         return ret;
     }
     struct timesync_entry entry = {.reference = reference, .interpolated = interpolated};
@@ -561,6 +677,8 @@ int storage_write_timesync(uint64_t reference, uint64_t interpolated) {
     if (ret < 0) {
         LOG_ERR("failed to close timesync file after writing event, err %d", ret);
     }
+
+    k_mutex_unlock(&storage_mutex);
     return ret;
 }
 
@@ -587,14 +705,23 @@ int cmd_get_free_sd_space(uint8_t* data) {
     // struct cmd_get_free_sd_space_request* req_data = (struct
     // cmd_get_free_sd_space_request*)data;
     struct cmd_get_free_sd_space_response* resp_data = (struct cmd_get_free_sd_space_response*)data;
+    if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
+        LOG_ERR("could not acquire storage mutex to get free sd space");
+        resp_data->free_bytes = 0;
+        return -EACCES;
+    }
+
     struct fs_statvfs stat;
     int res = fs_statvfs(mp.mnt_point, &stat);
     if (res < 0) {
         LOG_ERR("could not get free space, err %d", res);
         resp_data->free_bytes = 0;
+        k_mutex_unlock(&storage_mutex);
         return res;
     }
     resp_data->free_bytes = stat.f_bfree * stat.f_frsize;
+
+    k_mutex_unlock(&storage_mutex);
     return 0;
 }
 
@@ -638,10 +765,13 @@ int cmd_get_file_index_info(uint8_t* data) {
     struct GetFileNameFromIndexContext context = {.resp_data = resp_data, .found = false};
 
     int res = storage_do_per_file_in_sd(get_file_name_from_index, &context);
-    if (context.found == false) {
+    if (res < 0) {
+        LOG_ERR("error occurred while looking for file with index %d, err %d", index, res);
+    } else if (context.found == false) {
         LOG_INF("no file found for index %d, err %d", index, res);
         res = -ENOENT;
     }
+
     resp_data->index = (context.found)
                            ? resp_data->index
                            : res;  // set to -1 to indicate error, valid index is non-negative
@@ -657,10 +787,17 @@ int cmd_get_file_crc32(uint8_t* data) {
     uint8_t buffer[512] __aligned(32);
     uint32_t checksum = 0;
 
+    if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
+        LOG_ERR("could not acquire storage mutex to compute crc32");
+        resp_data->status_code = -EACCES;
+        return -EACCES;
+    }
+
     int res = fs_open(&file, (char*)req_data->path, FS_O_READ);
     if (res < 0) {
         LOG_ERR("could not open file %s to get crc32, err %d", req_data->path, res);
         resp_data->status_code = res;
+        k_mutex_unlock(&storage_mutex);
         return res;
     }
 
@@ -682,6 +819,7 @@ int cmd_get_file_crc32(uint8_t* data) {
     resp_data->crc32 = checksum;
     resp_data->status_code = (res < 0) ? res : 0;
     res = resp_data->status_code;
+    k_mutex_unlock(&storage_mutex);
     return res;
 }
 
@@ -694,6 +832,13 @@ int cmd_download_file_chunk(uint8_t* data) {
         (struct cmd_download_file_chunk_response*)data;
     req_data->path[INTERFACE_MAX_FILE_NAME - 1] = '\0';  // ensure null termination
     static bool opened_file_for_download = false;
+
+    if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
+        LOG_ERR("could not acquire storage mutex to download chunk");
+        resp_data->bytes = -EACCES;
+        return -EACCES;
+    }
+
     int res = 0;
     if (req_data->offset == 0) {
         // close prev file if opened for some reason
@@ -706,6 +851,7 @@ int cmd_download_file_chunk(uint8_t* data) {
         if (res < 0) {
             LOG_ERR("could not open file %s to download chunk, err %d", req_data->path, res);
             resp_data->bytes = res;  // set to error code
+            k_mutex_unlock(&storage_mutex);
             return res;
         }
         opened_file_for_download = true;
@@ -715,6 +861,7 @@ int cmd_download_file_chunk(uint8_t* data) {
         LOG_ERR("file not opened for download but got offset %d, path %s", req_data->offset,
                 req_data->path);
         resp_data->bytes = -EPERM;  // set to error code
+        k_mutex_unlock(&storage_mutex);
         return -EPERM;
     }
 
@@ -747,5 +894,6 @@ int cmd_download_file_chunk(uint8_t* data) {
     }
 
     resp_data->bytes = res;  // set to 0 to indicate end of file
+    k_mutex_unlock(&storage_mutex);
     return res;
 }
