@@ -417,7 +417,7 @@ class MidgeBadgeConsole(cmd.Cmd):
                 print("Warning: No active clients, connect to a new client before sending another command")
                 return
 
-        self.active_client.list_files()
+        self.active_client.list_files(log_list=True)
 
     def do_download_file(self, arg):
         """

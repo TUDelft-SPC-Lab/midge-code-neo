@@ -196,8 +196,8 @@ class MidgeBadgeClient:
     def send_command(self, request: MidgeBadgeCommand):
         self.__request_queue.put_sync(request)
 
-    def get_response(self):
-        return self.__response_queue.get_sync()
+    def get_response(self, timeout=120):
+        return self.__response_queue.get_sync(timeout=timeout)
 
     def execute_command_log_resp(self, request: MidgeBadgeCommand):
         self.send_command(request)
@@ -205,7 +205,7 @@ class MidgeBadgeClient:
 
     # Utility functions for complex behavior
 
-    def list_files(self, log_list=True):
+    def list_files(self, log_list=False):
         index = 0
         paths = []
         while True:

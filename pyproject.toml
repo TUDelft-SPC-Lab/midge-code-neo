@@ -18,6 +18,8 @@ dev = [
   "mkdocstrings[python]>=0.26.1,<1",
   "mkdocs-material>=9.5.39,<10",
   "setuptools-scm>=8.1.0,<9",
+  "pydantic>=2.13.3,<3",
+  "ruamel.yaml>=0.19.0,<0.20.0"
 ]
 
 [tool.uv.sources]
@@ -45,6 +47,7 @@ tester = "midge_code_neo.single_tester:main_sync"
 scan_parse = "midge_code_neo.scan_parse:main"
 imu_parse = "midge_code_neo.imu_parse:main"
 timesync_parse = "midge_code_neo.timesync_parse:main"
+hub_cli = "midge_code_neo.hub_cli:main_sync"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
