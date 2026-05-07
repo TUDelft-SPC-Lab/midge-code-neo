@@ -44,7 +44,7 @@ int proximity_sensor_init() {
         LOG_INF("already initialized");
         return -EPERM;
     }
-    sensor_data.state = PROXIMITY_SENSOR_STATE_ACTIVE;
+    sensor_data.state = PROXIMITY_SENSOR_STATE_STOP;
     return 0;
 }
 

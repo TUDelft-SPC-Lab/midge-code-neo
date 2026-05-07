@@ -1,4 +1,4 @@
-id: 0
+id: 79
 name: testlab
 description: Test of 3 simultaneous Mingle Midges
 
@@ -21,10 +21,10 @@ groups:
     description: 2 Mingle Midges in the same group
     badges:
       - id: 0
-        mac: E2:6E:4E:21:F1:A4
+        mac: E0:01:6F:87:74:E2
         name: rice
       - id: 1
-        mac: c3:2b:78:b5:c2:4a
+        mac: CD:60:EF:E6:2C:4C
         name: beans
 
   - id: 1

@@ -1,14 +1,16 @@
 from typing import Annotated
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from ruamel.yaml import YAML
 
 VALID_MAC_OR_ANY = r"^([0-9A-Fa-f]{2}[:]){5}([0-9A-Fa-f]{2})$|^any$"
 
 
 class BadgeSchema(BaseModel):
+    model_config = ConfigDict(validate_assignment=True)
+
     id: Annotated[int, Field(frozen=True)]
-    mac: Annotated[str, Field(pattern=VALID_MAC_OR_ANY, frozen=True)]
+    mac: Annotated[str, Field(pattern=VALID_MAC_OR_ANY, frozen=False)]
     name: Annotated[str | None, Field(frozen=True)] = None
 
 
@@ -16,7 +18,7 @@ class GroupSchema(BaseModel):
     id: Annotated[int, Field(frozen=True)]
     name: Annotated[str, Field(frozen=True)]
     description: Annotated[str, Field(frozen=True)]
-    badges: list[BadgeSchema]
+    badges: Annotated[list[BadgeSchema], Field(frozen=True)]
 
     @field_validator("badges")
     def validate_unique_badge_ids(cls, badges):
@@ -28,20 +30,20 @@ class GroupSchema(BaseModel):
 
 
 class AudioParamsSchema(BaseModel):
-    high_freq_hz: int
-    low_freq_decimation: int
-    channels: Annotated[int, Field(ge=1, le=2)]
+    high_freq_hz: Annotated[int, Field(frozen=True)]
+    low_freq_decimation: Annotated[int, Field(frozen=True)]
+    channels: Annotated[int, Field(ge=1, le=2, frozen=True)]
 
 
 class ImuParamsSchema(BaseModel):
-    accel_range_g: int
-    gyro_range_dps: int
-    sample_rate_hz: int
+    accel_range_g: Annotated[int, Field(frozen=True)]
+    gyro_range_dps: Annotated[int, Field(frozen=True)]
+    sample_rate_hz: Annotated[int, Field(frozen=True)]
 
 
 class ScanParamsSchema(BaseModel):
-    interval: int
-    window: int
+    interval: Annotated[int, Field(frozen=True)]
+    window: Annotated[int, Field(frozen=True)]
 
 
 class ExperimentParamsSchema(BaseModel):

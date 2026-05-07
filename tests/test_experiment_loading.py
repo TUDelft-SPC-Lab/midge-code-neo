@@ -46,8 +46,9 @@ def test_badge_schema_fields_are_frozen():
     with pytest.raises(ValidationError, match="Field is frozen"):
         badge.id = 10
 
-    with pytest.raises(ValidationError, match="Field is frozen"):
-        badge.mac = "11:22:33:44:55:66"
+    # `mac` can be updated at runtime; ensure assignment succeeds
+    badge.mac = "11:22:33:44:55:66"
+    assert badge.mac == "11:22:33:44:55:66"
 
     with pytest.raises(ValidationError, match="Field is frozen"):
         badge.name = "beta"

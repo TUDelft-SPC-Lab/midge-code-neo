@@ -67,13 +67,23 @@ class NotifyState(Enum):
     READ_EOT = 3
 
 
+class BleakClientModified(BleakClient):
+    async def __aexit__(self, *args):
+        try:
+            return await super().__aexit__(*args)
+        except EOFError as _:
+            # Handle EOFError that can occur on some platforms when the connection is closed
+            return None
+
+
 class MidgeBadgeClient:
-    def __init__(self, address=None):
+    def __init__(self, address=None, reserved_macs=None):
         self.address = address
         self.device = None
         self.connected = False
         self.__request_queue = None
         self.__response_queue = None
+        self.__reserved_macs = reserved_macs if reserved_macs is not None else []
 
     def get_address(self) -> str:
         return self.address
@@ -83,9 +93,13 @@ class MidgeBadgeClient:
 
     def __find_filter(self, device: BLEDevice, adv: AdvertisementData):
         nus_present = UART_SERVICE_UUID.lower() in adv.service_uuids
-        addr_match = True if (self.address is None) else device.address == self.address
+        addr_match = device.address == self.address
+        any_found = False
         logger.debug("%s %s", device, self.address)
-        return nus_present and addr_match
+        if nus_present and self.address is None and device.address not in self.__reserved_macs:
+            self.address = device.address
+            any_found = True
+        return nus_present and (addr_match or any_found)
 
     def __handle_disconnect(self, client: BleakClient):
         logger.info("Disconnected %s", client.address)
@@ -152,9 +166,8 @@ class MidgeBadgeClient:
         def disconnect_cb(client):
             return self.__handle_disconnect(client)
 
-        async with BleakClient(self.device, disconnected_callback=disconnect_cb) as client:
+        async with BleakClientModified(self.device, disconnected_callback=disconnect_cb) as client:
             logger.info("Connected to midge %s", self.device.address)
-
             self.__tx_notify_state = NotifyState.READ_SOT
             self.__tx_notify_buffer = bytearray()
 
@@ -205,7 +218,7 @@ class MidgeBadgeClient:
 
     # Utility functions for complex behavior
 
-    def list_files(self, log_list=False):
+    def list_files(self, log_list=False) -> list[str]:
         index = 0
         paths = []
         while True:

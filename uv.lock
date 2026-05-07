@@ -549,10 +549,16 @@ version = "0.1.0"
 source = { editable = "packages/midge-badge-framework" }
 dependencies = [
     { name = "bleak" },
+    { name = "pydantic" },
+    { name = "ruamel-yaml" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "bleak", specifier = ">=2.1.1" }]
+requires-dist = [
+    { name = "bleak", specifier = ">=2.1.1" },
+    { name = "pydantic", specifier = ">=2.13.3,<3" },
+    { name = "ruamel-yaml", specifier = ">=0.19.0,<0.20.0" },
+]
 
 [[package]]
 name = "midge-code-neo"
@@ -567,10 +573,8 @@ dev = [
     { name = "mkdocs-material" },
     { name = "mkdocstrings", extra = ["python"] },
     { name = "prek" },
-    { name = "pydantic" },
     { name = "pytest" },
     { name = "pytest-cov" },
-    { name = "ruamel-yaml" },
     { name = "setuptools-scm" },
 ]
 
@@ -583,10 +587,8 @@ dev = [
     { name = "mkdocs-material", specifier = ">=9.5.39,<10" },
     { name = "mkdocstrings", extras = ["python"], specifier = ">=0.26.1,<1" },
     { name = "prek", specifier = ">=0.3.2,<2" },
-    { name = "pydantic", specifier = ">=2.13.3,<3" },
     { name = "pytest", specifier = ">=8.3.3,<9" },
     { name = "pytest-cov", specifier = ">=5.0.0,<6" },
-    { name = "ruamel-yaml", specifier = ">=0.19.0,<0.20.0" },
     { name = "setuptools-scm", specifier = ">=8.1.0,<9" },
 ]
 

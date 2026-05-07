@@ -386,7 +386,7 @@ int audio_sensor_start(int sample_iter, uint16_t high_sample_rate,
                 dmic_build_channel_map(1, 0, PDM_CHAN_RIGHT);
         } break;
         default: {
-            sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+            sensor_data.state = AUDIO_SENSOR_STATE_STOP;
             return -EINVAL;
         }
     }

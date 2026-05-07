@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import cmd
 import pathlib
 import shlex
 from time import time_ns
 
-from midge_badge_framework.hub import MidgeBadgeHub, MidgeBadgeHubException
-from midge_badge_framework.protocol import CmdStatusRequest, MidgeBadgeCommand
+from midge_badge_framework.hub import GroupCommandExecResult, MidgeBadgeHub, MidgeBadgeHubException
 from midge_badge_framework.schema import BadgeSchema, ExperimentSchema
 
 
@@ -38,16 +38,26 @@ class HubCLI(cmd.Cmd):
         print(f"Selected badge: {selected.name} ({selected.mac})")
 
     @staticmethod
-    def _print_response_rows(rows: list[tuple[BadgeSchema, MidgeBadgeCommand]] | None) -> None:
+    def _print_response_rows(rows: list[GroupCommandExecResult] | None) -> None:
         if not rows:
             print("No responses")
             return
-        for badge, response in rows:
-            print(f"{badge}): {response}")
+        for group_result in rows:
+            print(f'{"=" * 30}Group {group_result.group.id} "{group_result.group.name}"{"=" * 30}')
+            for badge_result in group_result.badge_results:
+                print(f"{' ':20}Badge {badge_result.badge}:")
+                for cmd_result in badge_result.responses:
+                    print(f"+ {cmd_result}")
 
     def emptyline(self) -> None:
         # Avoid repeating the previous command on empty input.
         return
+
+    def do_init(self, arg: str) -> None:
+        """init: Initialize experiment by connecting to badges and performing checks."""
+        _ = arg
+        self.hub.init_experiment()
+        print("Experiment initialized")
 
     def do_experiment(self, arg: str) -> None:
         """experiment: Show high-level experiment summary."""
@@ -109,14 +119,8 @@ class HubCLI(cmd.Cmd):
     def do_status(self, arg: str) -> None:
         """status: Run a status check on selected badge(s)."""
         _ = arg
-
-        def update_cmd_timestamp(cmd: CmdStatusRequest) -> CmdStatusRequest:
-            timestamp_ms = time_ns() // 1_000_000
-            cmd.millis_since_epoch = timestamp_ms
-            return cmd
-
-        cmd_obj = CmdStatusRequest(0)
-        self._print_response_rows(self.hub.execute_cmd(cmd_obj, cmd_preprocess=update_cmd_timestamp))
+        status = self.hub.get_status()
+        self._print_response_rows(status)
 
     def do_fw_version(self, arg: str) -> None:
         """fw_version: Read firmware version from selected badge(s)."""
@@ -206,7 +210,13 @@ class HubCLI(cmd.Cmd):
     def do_watch_status_start(self, arg: str) -> None:
         """watch_status_start: Start background periodic status checks."""
         _ = arg
-        self.hub.start_repetitive_status_check()
+
+        def callback(results: list[GroupCommandExecResult]) -> None:
+            print(f"\n[Status Check at {time_ns() // 1_000_000} ms]")
+            self._print_response_rows(results)
+            print(f"[End of Status Check]\n{self.prompt}", end="", flush=True)
+
+        self.hub.start_repetitive_status_check(callback=callback)
         print("Started periodic status checks")
 
     def do_watch_status_stop(self, arg: str) -> None:
@@ -244,6 +254,10 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+async def runner(cli: HubCLI) -> None:
+    cli.cmdloop()
+
+
 def main_sync() -> None:
     parser = _build_parser()
     args = parser.parse_args()
@@ -254,7 +268,7 @@ def main_sync() -> None:
         cli.onecmd(args.run)
         return
 
-    cli.cmdloop()
+    asyncio.run(runner(cli))
 
 
 if __name__ == "__main__":

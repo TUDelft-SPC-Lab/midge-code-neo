@@ -58,6 +58,10 @@ void sw_pos_changed(const struct device* dev, struct gpio_callback* cb, uint32_t
     if (k_mutex_lock(&switch_mutex, K_NO_WAIT) == 0) {
         if (!debouncing) {
             debouncing = true;
+        } else {
+            // already debouncing, ignore this interrupt
+            k_mutex_unlock(&switch_mutex);
+            return;
         }
         memset(&switch_read_work, 0, sizeof(switch_read_work));
         k_work_init_delayable(&switch_read_work, switch_read_work_handler);

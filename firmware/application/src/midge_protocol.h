@@ -155,7 +155,6 @@ struct __attribute__((packed)) cmd_get_free_sd_space_response {
     uint32_t free_bytes;
 };
 
-/// ==== File transfer related messages, not yet implemented ====
 struct __attribute__((packed)) cmd_get_file_index_info_request {
     int16_t index;
 };
