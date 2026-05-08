@@ -56,14 +56,27 @@ int proximity_sensor_change_config(uint16_t interval, uint16_t window) {
     return 0;
 }
 
-static bool scan_data_parse(struct bt_data* data, void* advertised_data) {
-    if (data->type == BT_DATA_MANUFACTURER_DATA &&
-        data->data_len == sizeof(struct custom_advertisement_data)) {
-        memcpy(advertised_data, data->data, sizeof(struct custom_advertisement_data));
+struct scan_data_parse_out {
+    struct custom_advertisement_data* adv_data;
+    bool valid;
+};
+
+static bool scan_data_parse(struct bt_data* data, void* out) {
+    struct scan_data_parse_out* parse_out = (struct scan_data_parse_out*)out;
+    if (data->type == BT_DATA_NAME_COMPLETE) {
+        if (strncmp((char*)data->data, CONFIG_BT_DEVICE_NAME, data->data_len) == 0) {
+            parse_out->valid = true;
+            return true;
+        } else {
+            parse_out->valid = false;
+            return false;  // stop parsing, not valid
+        }
+    } else if (data->type == BT_DATA_MANUFACTURER_DATA &&
+               data->data_len == sizeof(struct custom_advertisement_data)) {
+        parse_out->adv_data = (struct custom_advertisement_data*)data->data;
         return false;  // stop parsing
-    } else {
-        return true;  // continue parsing
     }
+    return true;  // continue parsing
 }
 
 /**
@@ -89,7 +102,15 @@ void scan_callback(const bt_addr_le_t* addr, int8_t rssi, uint8_t adv_type,
         sample->timestamp = time_control_get_timestamp();
         memcpy(sample->mac_address, addr->a.val, 6);
         // obtain the advertised data
-        bt_data_parse(buf, scan_data_parse, &sample->advertised_data);
+        struct scan_data_parse_out parse_out = {
+            .adv_data = &sample->advertised_data,
+            .valid = false,
+        };
+        bt_data_parse(buf, scan_data_parse, &parse_out);
+        if (!parse_out.valid) {
+            k_mutex_unlock(&proximity_sensor_mutex);
+            return;
+        }
         sensor_data.sample_cnt++;
         if (sensor_data.sample_cnt == BUFFERED_SAMPLES) {
             struct simple_work_ctx ctx;
