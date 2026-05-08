@@ -1,0 +1,24 @@
+description: Board microphone PDM electrical constraints
+
+compatible: generic,pdm-mic
+
+properties:
+  min-pdm-clk-freq:
+    type: int
+    required: true
+    description: Minimum allowed PDM clock frequency in Hz
+
+  max-pdm-clk-freq:
+    type: int
+    required: true
+    description: Maximum allowed PDM clock frequency in Hz
+
+  min-pdm-clk-dc:
+    type: int
+    required: true
+    description: Minimum allowed PDM clock duty cycle percentage
+
+  max-pdm-clk-dc:
+    type: int
+    required: true
+    description: Maximum allowed PDM clock duty cycle percentage

@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <zephyr/audio/dmic.h>
+#include <zephyr/devicetree.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
@@ -12,6 +13,8 @@
 #include "time_control.h"
 
 LOG_MODULE_REGISTER(mb_audio);
+
+#define MIC_PARAMS_NODE DT_ALIAS(mic_params)
 
 #define SAMPLE_BIT_WIDTH 16
 #define BYTES_PER_SAMPLE sizeof(int16_t)
@@ -33,19 +36,12 @@ char mem_slab_buffer[BLOCK_COUNT * MAX_BLOCK_SIZE] __aligned(4);
 // K_MEM_SLAB_DEFINE_STATIC(mem_slab, MAX_BLOCK_SIZE, BLOCK_COUNT, 4);
 
 const struct device* const dmic_dev = DEVICE_DT_GET(DT_NODELABEL(dmic_dev));
-/**
- * @brief Microphone configuration. Depends on hardware. Might be useful to
- * have the config defined as part of the device tree
- * For now, assumes usage of PDM Mic ST MP34DT05TR-A
- */
-struct pdm_io_cfg microphone_cfg = {
-    // The mic is stated to require 1.2MHz min clock, but it has been validated
-    // to work with 1MHz which is required for 16KHz sample rate.
-    .min_pdm_clk_freq = 1000000,
-    .max_pdm_clk_freq = 3250000,
-    // usual value in datasheets: 40% min, 60% max, 50% typical
-    .min_pdm_clk_dc = 40,
-    .max_pdm_clk_dc = 60,
+
+static const struct pdm_io_cfg microphone_cfg = {
+    .min_pdm_clk_freq = DT_PROP(MIC_PARAMS_NODE, min_pdm_clk_freq),
+    .max_pdm_clk_freq = DT_PROP(MIC_PARAMS_NODE, max_pdm_clk_freq),
+    .min_pdm_clk_dc = DT_PROP(MIC_PARAMS_NODE, min_pdm_clk_dc),
+    .max_pdm_clk_dc = DT_PROP(MIC_PARAMS_NODE, max_pdm_clk_dc),
 };
 
 struct pcm_stream_cfg stream = {

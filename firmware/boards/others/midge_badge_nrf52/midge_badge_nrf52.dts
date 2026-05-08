@@ -87,10 +87,19 @@
 		sw-audio-low = &sw_audio_low;
 		sw-audio-high = &sw_audio_high;
 		mcuboot-led0 = &led0;
+		mic-params = &audio_mic;
 		imu-i2c = &i2c1;
 #if CLOSED_SOURCE_ICM20948
 		imu-int = &imu_int;
 #endif
+	};
+
+	audio_mic: microphone {
+		compatible = "generic,pdm-mic";
+		min-pdm-clk-freq = <1000000>;
+		max-pdm-clk-freq = <3250000>;
+		min-pdm-clk-dc = <40>;
+		max-pdm-clk-dc = <60>;
 	};
 };
 
