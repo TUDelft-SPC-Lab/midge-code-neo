@@ -18,7 +18,10 @@ def main():
     # Determine output destination
     output_path = args.output if (args.output) else "/dev/stdout"
     with open(output_path, "w") as output_file:
-        output_file.write("reference_timestamp, interpolated_timestamp, reference_datetime, interpolated_datetime\n")
+        output_file.write(
+            "reference_timestamp, interpolated_timestamp, internal_timestamp, "
+            "reference_datetime, interpolated_datetime, internal_datetime\n"
+        )
         with open(input_path, "rb") as file:
             while True:
                 a = TimeSyncEntry()
@@ -28,7 +31,12 @@ def main():
 
                 reference_ts = a.reference
                 interpolated_ts = a.interpolated
+                internal_ts = a.internal
                 reference_dt = datetime.fromtimestamp(reference_ts / 1000.0)
                 interpolated_dt = datetime.fromtimestamp(interpolated_ts / 1000.0)
-
-                output_file.write(f"{reference_ts}, {interpolated_ts}, {reference_dt}, {interpolated_dt}\n")
+                internal_dt = datetime.fromtimestamp(internal_ts / 1000.0)
+                msg = (
+                    f"{reference_ts}, {interpolated_ts}, {internal_ts},"
+                    f"{reference_dt}, {interpolated_dt}, {internal_dt}\n"
+                )
+                output_file.write(msg)

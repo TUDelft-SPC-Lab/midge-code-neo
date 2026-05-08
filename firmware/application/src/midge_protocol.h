@@ -208,6 +208,7 @@ struct __attribute__((packed)) cmd_download_file_chunk_response {
 struct __attribute__((packed)) timesync_entry {
     uint64_t reference;
     uint64_t interpolated;
+    uint64_t internal;
 };
 
 struct __attribute__((packed)) proximity_sensor_entry {

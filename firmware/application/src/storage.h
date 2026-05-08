@@ -81,11 +81,10 @@ int storage_seek_start(enum mb_file_type file_type);
 /**
  * @brief Special case to register time sync events
  *
- * @param reference timestamp sent from the remote controller
- * @param interpolated timestamp interpolated on the badge at the time the sync message was received
+ * @param entry pointer to the timesync entry to write
  * @return int 0 if successful, negative error code if FS specific error occurred
  */
-int storage_write_timesync(uint64_t reference, uint64_t interpolated);
+int storage_write_timesync(struct timesync_entry* entry);
 
 int cmd_erase_sd(uint8_t* data);
 

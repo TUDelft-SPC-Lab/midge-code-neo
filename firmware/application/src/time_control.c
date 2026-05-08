@@ -74,6 +74,10 @@ int time_control_update(uint64_t ref_ms) {
 }
 
 uint64_t time_control_get_timestamp() {
+    return k_uptime_get();  // return local time in ms
+}
+
+static uint64_t time_control_get_timestamp_interp() {
     uint64_t ref;
     if (status == TIME_NOT_SYNCED) {
         LOG_ERR("Need to initialize the time reference first");
@@ -92,7 +96,15 @@ uint64_t time_control_get_timestamp() {
 }
 
 int time_control_sync(uint64_t ref_ms, int64_t* error_ms) {
-    uint64_t current_interpolation = time_control_get_timestamp();
+    uint64_t current_interpolation = time_control_get_timestamp_interp();
+    uint64_t current_internal = time_control_get_timestamp();
+
+    struct timesync_entry entry = {
+        .reference = ref_ms,
+        .interpolated = current_interpolation,
+        .internal = current_internal,
+    };
+
     int64_t error;  // ref - interp
     int64_t delta;
     if (current_interpolation < (FW_BUILD_TIMESTAMP * 1000)) {
@@ -117,7 +129,7 @@ int time_control_sync(uint64_t ref_ms, int64_t* error_ms) {
     if (delta > BLE_LATENCY_THRESHOLD_MS) {
         LOG_INF("Performing time sync, error: %" PRId64 " ms, assumed latency: %d ms", error,
                 BLE_LATENCY_AVG_RX_MS);
-        ret = storage_write_timesync(ref_ms, current_interpolation);
+        ret = storage_write_timesync(&entry);
         if (ret < 0) {
             LOG_ERR("Failed to write time sync info to storage, status %d", ret);
             status = TIME_ERR;

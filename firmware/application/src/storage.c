@@ -638,7 +638,7 @@ int storage_seek_start(enum mb_file_type file_type) {
     return ret;
 }
 
-int storage_write_timesync(uint64_t reference, uint64_t interpolated) {
+int storage_write_timesync(struct timesync_entry* entry) {
     if (k_mutex_lock(&storage_mutex, K_FOREVER) != 0) {
         LOG_ERR("could not acquire storage mutex to write timesync");
         return -EACCES;
@@ -665,7 +665,6 @@ int storage_write_timesync(uint64_t reference, uint64_t interpolated) {
         k_mutex_unlock(&storage_mutex);
         return ret;
     }
-    struct timesync_entry entry = {.reference = reference, .interpolated = interpolated};
     // uint8_t buff[64];
     //  snprintf((char*)buff, sizeof(buff), "ref: %" PRIu64 ", interp: %" PRIu64 "\n",
     //  reference,

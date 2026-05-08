@@ -128,6 +128,7 @@ class TimeSyncEntry(Structure):
     _fields_ = [
         ("reference", c_uint64),
         ("interpolated", c_uint64),
+        ("internal", c_uint64),
     ]
 
     def __str__(self):
