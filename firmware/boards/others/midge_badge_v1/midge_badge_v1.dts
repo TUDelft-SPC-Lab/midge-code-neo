@@ -1,7 +1,7 @@
 
 /dts-v1/;
 #include <nordic/nrf52832_qfaa.dtsi>
-#include "midge_badge_nrf52-pinctrl.dtsi"
+#include "midge_badge_v1-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/sensor/icm20948.h>
 #define CLOSED_SOURCE_ICM20948 1
@@ -26,8 +26,8 @@
 
 
 / {
-	model = "midge_badge_nrf52";
-	compatible = "nordic,midge-badge-nrf52";
+	model = "midge_badge_v1";
+	compatible = "others,midge-badge-v1";
 
 	chosen {
 		/*zephyr,console = &uart0;

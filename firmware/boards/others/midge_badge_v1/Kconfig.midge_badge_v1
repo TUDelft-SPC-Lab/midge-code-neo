@@ -1,0 +1,2 @@
+config BOARD_MIDGE_BADGE_V1
+	select SOC_NRF52832_QFAA

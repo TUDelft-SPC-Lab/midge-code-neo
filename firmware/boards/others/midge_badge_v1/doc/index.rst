@@ -1,8 +1,9 @@
-.. zephyr:board:: midge_badge_nrf52
+.. zephyr:board:: midge_badge_v1
 
 Overview
 ********
 
+BMD300 Based Midge Badge, using ICM20948 IMU
 
 
 Hardware
@@ -41,7 +42,7 @@ Flashing
 
 .. zephyr-app-commands::
    :zephyr-app: samples/hello_world
-   :board: midge_badge_nrf52
+   :board: midge_badge_v1
    :goals: build flash
 
 Debugging

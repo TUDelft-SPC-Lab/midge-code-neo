@@ -1,6 +1,6 @@
-if BOARD_MIDGE_BADGE_NRF52
+if BOARD_MIDGE_BADGE_V1
 
-menu "midge_badge_nrf52 specific options"
+menu "midge_badge_v1 specific options"
 choice MIDGE_SEL_IMU
 	prompt "IMU selection"
 	default MIDGE_SEL_IMU_ICM20948
@@ -23,4 +23,4 @@ config MIDGE_IMU_ICM20948_USE_CLOSED_DRIVER
 	  Enable to use the closed-source ICM20948 driver.
 	  Disable to use the Zephyr native ICM20948 driver.
 
-endif # BOARD_MIDGE_BADGE_NRF52
+endif # BOARD_MIDGE_BADGE_V1

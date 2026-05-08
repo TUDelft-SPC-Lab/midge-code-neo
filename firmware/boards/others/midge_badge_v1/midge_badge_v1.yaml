@@ -1,5 +1,5 @@
 identifier: spcl_midge_badge
-name: midge_badge_nrf52
+name: midge_badge_v1
 type: mcu
 arch: arm
 

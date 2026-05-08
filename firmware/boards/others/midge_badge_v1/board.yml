@@ -1,5 +1,5 @@
 board:
-  name: midge_badge_nrf52
+  name: midge_badge_v1
   full_name: SPCL Midge Badge
   vendor: others
   socs:
