@@ -16,6 +16,8 @@ from .protocol import (
     CmdEraseSDRequest,
     CmdGetFreeSDSpaceRequest,
     CmdGetFWVersionRequest,
+    CmdIdentifyRequest,
+    CmdResetRequest,
     CmdSetupExperimentRequest,
     CmdStartIMURequest,
     CmdStartMicRequest,
@@ -322,6 +324,14 @@ class MidgeBadgeHub:
 
     def get_fw_version(self) -> list[GroupCommandExecResult]:
         cmd = CmdGetFWVersionRequest()
+        return self.execute_cmd(CommandEntry(cmd=cmd))
+
+    def reset(self) -> list[GroupCommandExecResult]:
+        cmd = CmdResetRequest()
+        return self.execute_cmd(CommandEntry(cmd=cmd))
+
+    def identify(self) -> list[GroupCommandExecResult]:
+        cmd = CmdIdentifyRequest()
         return self.execute_cmd(CommandEntry(cmd=cmd))
 
     def sd_card_get_free_space(self) -> list[GroupCommandExecResult]:

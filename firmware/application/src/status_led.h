@@ -9,4 +9,6 @@ int led_report_status(int status_code);
 
 int led_report_active(bool active);
 
+int led_identify(void);
+
 #endif

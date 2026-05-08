@@ -12,6 +12,7 @@ static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 
 #define DELAY_MS_OK 250
 #define DELAY_MS_ERROR 750
+#define DELAY_MS_IDENTIFY 100
 
 int led_init(void) {
     int ret;
@@ -58,3 +59,18 @@ int led_report_status(int status_code) {
 // To be called from module that is aware of the active sensors, for now,
 // storage
 int led_report_active(bool active) { return gpio_pin_set_dt(&led, active ? 0 : 1); }
+
+int led_identify(void) {
+    // get the current led state
+    bool led_on = gpio_pin_get_dt(&led);
+
+    for (int i = 0; i < 100; i++) {
+        int ret = gpio_pin_toggle_dt(&led);
+        if (ret < 0) {
+            LOG_ERR("Failed to toggle LED");
+            return 0;
+        }
+        k_msleep(DELAY_MS_IDENTIFY);
+    }
+    return gpio_pin_set_dt(&led, led_on);  // restore original state
+}

@@ -24,6 +24,8 @@ struct __attribute__((packed)) custom_advertisement_data {
 };
 
 enum CmdID {
+    CMD_ID_RESET = '0',
+    CMD_ID_IDENTIFY = '1',
     CMD_ID_SETUP_EXPERIMENT = 'A',
     CMD_ID_STATUS = 'B',
     CMD_ID_GET_FW_VERSION = 'C',
@@ -42,6 +44,22 @@ enum CmdID {
 };
 
 // ==== Protocol messages =========== //
+struct __attribute__((packed)) cmd_reset_request {
+    uint16_t reserved;
+};
+
+struct __attribute__((packed)) cmd_reset_response {
+    int32_t status_code;
+};
+
+struct __attribute__((packed)) cmd_identify_request {
+    uint16_t reserved;
+};
+
+struct __attribute__((packed)) cmd_identify_response {
+    int32_t status_code;
+};
+
 struct __attribute__((packed)) cmd_setup_experiment_request {
     union badge_assignment badge_assignment;
     uint16_t experiment_id;
@@ -58,9 +76,10 @@ struct __attribute__((packed)) cmd_status_request {
 };
 struct __attribute__((packed)) cmd_status_response {
     uint8_t sync_status;
-    uint8_t storage_init_status;
-    uint8_t audio_init_status;
-    uint8_t proximity_init_status;
+    uint8_t storage_status;
+    uint8_t audio_status;
+    uint8_t proximity_status;
+    uint8_t imu_status;
     int16_t battery_millivolts;
     union badge_assignment badge_assignment;
     int64_t sync_error_ms;  // ref - interp
@@ -77,7 +96,7 @@ struct __attribute__((packed)) cmd_get_fw_version_response {
 struct __attribute__((packed)) cmd_start_mic_request {
     uint16_t sample_id;
     uint16_t high_sample_rate;
-    uint16_t low_sample_rate_decimation;
+    uint8_t low_sample_rate_decimation;
     uint8_t mode;  // See @ref audio.h for mode definitions
 };
 

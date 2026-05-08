@@ -8,6 +8,7 @@
 #include <zephyr/bluetooth/services/nus.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/reboot.h>
 #include <zephyr/sys/util.h>
 
 #include "audio.h"
@@ -15,6 +16,7 @@
 #include "imu.h"
 #include "midge_protocol.h"
 #include "proximity.h"
+#include "status_led.h"
 #include "storage.h"
 #include "time_control.h"
 
@@ -57,13 +59,11 @@ int cmd_status(uint8_t* data) {
     resp_data->badge_assignment = advertised_data.badge_assignment;
     resp_data->sync_status = time_control_get_status();
     resp_data->sync_error_ms = error;
-    resp_data->audio_init_status = audio_sensor_get_status();
-    LOG_INF("audio sensor get status");
+    resp_data->audio_status = audio_sensor_get_status();
     resp_data->battery_millivolts = mv;
-    resp_data->proximity_init_status = proximity_sensor_get_status();
-    LOG_INF("proximity sensor get status");
-    resp_data->storage_init_status = storage_get_status();
-    LOG_INF("returning status");
+    resp_data->proximity_status = proximity_sensor_get_status();
+    resp_data->storage_status = storage_get_status();
+    resp_data->imu_status = imu_sensor_get_status();
     return ret;
 }
 
@@ -78,6 +78,29 @@ int cmd_get_fw_version(uint8_t* data) {
     return 0;
 }
 
+static void reset_work_handler(struct k_work* work) {
+    LOG_INF("Performing delayed reset...");
+    sys_reboot(SYS_REBOOT_COLD);
+}
+
+static struct k_work_delayable reset_work;
+
+int cmd_reset(uint8_t* data) {
+    k_work_init_delayable(&reset_work, reset_work_handler);
+    k_work_schedule(&reset_work, K_SECONDS(4));
+    LOG_INF("received reset command, resetting...");
+
+    struct cmd_reset_response* resp_data = (struct cmd_reset_response*)data;
+    resp_data->status_code = 0;  // success
+    return 0;
+}
+
+int cmd_identify(uint8_t* data) {
+    struct cmd_identify_response* resp_data = (struct cmd_identify_response*)data;
+    resp_data->status_code = led_identify();
+    return 0;
+}
+
 enum cmd_state { READ_SOT, READ_CMD, READ_DATA, READ_EOT };
 
 struct cmd_processor_lut_entry {
@@ -88,6 +111,9 @@ struct cmd_processor_lut_entry {
 };
 
 struct cmd_processor_lut_entry commands[] = {
+    {CMD_ID_RESET, sizeof(struct cmd_reset_request), sizeof(struct cmd_reset_response), cmd_reset},
+    {CMD_ID_IDENTIFY, sizeof(struct cmd_identify_request), sizeof(struct cmd_identify_response),
+     cmd_identify},
     {CMD_ID_SETUP_EXPERIMENT, sizeof(struct cmd_setup_experiment_request),
      sizeof(struct cmd_setup_experiment_response), cmd_setup_experiment},
     {CMD_ID_STATUS, sizeof(struct cmd_status_request), sizeof(struct cmd_status_response),

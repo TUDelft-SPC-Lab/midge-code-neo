@@ -58,7 +58,7 @@ static struct {
     struct dmic_cfg audio_config;
     uint16_t sample_iter;
     uint16_t high_sample_rate;
-    uint16_t low_sample_rate_decimation;
+    uint8_t low_sample_rate_decimation;
 } sensor_data = {.state = AUDIO_SENSOR_STATE_DISABLED,
                  .audio_config = {},
                  .sample_iter = 0,
@@ -103,9 +103,9 @@ struct __attribute__((packed)) WavFileHeader {
 
 static int write_metadata(struct audio_meta_data* metadata) {
     char buffer[128];
-    int len = snprintf(buffer, sizeof(buffer), "%" PRIu64 ", %d,%d,%d,%d\n", metadata->timestamp_ms,
-                       metadata->status_code, metadata->event_type, metadata->frequency_hz,
-                       metadata->num_channels);
+    int len = snprintf(buffer, sizeof(buffer), "%" PRIu64 ", %d,%d,%d,%d, %d\n",
+                       metadata->timestamp_ms, metadata->status_code, metadata->event_type,
+                       metadata->frequency_hz, metadata->num_channels, metadata->decimation);
     if (len < 0) {
         LOG_ERR("Failed to format audio metadata, status %d\n", len);
         return -EFAULT;
@@ -157,7 +157,7 @@ static void audio_init_sampling_work_handler(struct k_work* work) {
         }
 
         ret = storage_init_sample_file(FILE_TYPE_AUDIO_METADATA, sensor_data.sample_iter);
-        char csv_header[] = "timestamp(ms), status, event, freq, channels\n";
+        char csv_header[] = "timestamp(ms), status, event, freq, channels, decimation\n";
         if (ret == 0) {
             // -1 to exclude null terminator
             ret = storage_write(FILE_TYPE_AUDIO_METADATA, csv_header, sizeof(csv_header) - 1);
@@ -179,12 +179,15 @@ static void audio_init_sampling_work_handler(struct k_work* work) {
             storage_close(FILE_TYPE_AUDIO_METADATA);
             break;
         } else {
+            bool decimate = switch_sensor_position() == PRIVACY_SWITCH_POS_LOW ? true : false;
+            int decimation = decimate ? sensor_data.low_sample_rate_decimation : 1;
             struct audio_meta_data metadata = {
                 .timestamp_ms = time_control_get_timestamp(),
                 .status_code = 0,
                 .event_type = AUDIO_EVENT_TYPE_TRIGGER_START,
                 .frequency_hz = sensor_data.audio_config.streams->pcm_rate,
                 .num_channels = sensor_data.audio_config.channel.act_num_chan,
+                .decimation = decimation,
             };
             write_metadata(&metadata);
         }
@@ -222,7 +225,7 @@ static void audio_sample_process_work_handler(struct k_work* work) {
     struct audio_sampling_work_ctx* ctx =
         CONTAINER_OF(dwork, struct audio_sampling_work_ctx, process_work);
     bool decimate = switch_sensor_position() == PRIVACY_SWITCH_POS_LOW ? true : false;
-
+    uint8_t decimation = decimate ? sensor_data.low_sample_rate_decimation : 1;
     void* audio_buffer;
     uint32_t audio_buffer_size;
     int ret;
@@ -239,6 +242,7 @@ static void audio_sample_process_work_handler(struct k_work* work) {
                     .event_type = AUDIO_EVENT_TYPE_TRIGGER_START,
                     .frequency_hz = sensor_data.audio_config.streams->pcm_rate,
                     .num_channels = sensor_data.audio_config.channel.act_num_chan,
+                    .decimation = decimation,
                 };
                 // drop all buffer data and re-init sampling
                 k_mem_slab_init(&mem_slab, mem_slab_buffer, MAX_BLOCK_SIZE, BLOCK_COUNT);
@@ -304,6 +308,7 @@ static void audio_sample_process_work_handler(struct k_work* work) {
                 .event_type = AUDIO_EVENT_TYPE_TRIGGER_STOP,
                 .frequency_hz = sensor_data.audio_config.streams->pcm_rate,
                 .num_channels = sensor_data.audio_config.channel.act_num_chan,
+                .decimation = decimation,
             };
             ret = write_metadata(&metadata);
 
@@ -339,7 +344,7 @@ static void audio_sample_process_work_handler(struct k_work* work) {
 }
 
 int audio_sensor_start(int sample_iter, uint16_t high_sample_rate,
-                       uint16_t low_sample_rate_decimation, int mode) {
+                       uint8_t low_sample_rate_decimation, int mode) {
     // Validate input parameters
     if (mode != AUDIO_MODE_MONO && mode != AUDIO_MODE_STEREO) {
         LOG_ERR("Invalid audio mode %d", mode);

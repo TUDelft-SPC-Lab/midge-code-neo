@@ -127,6 +127,16 @@ class HubCLI(cmd.Cmd):
         _ = arg
         self._print_response_rows(self.hub.get_fw_version())
 
+    def do_reset(self, arg: str) -> None:
+        """reset: Reset selected badge(s)."""
+        _ = arg
+        self._print_response_rows(self.hub.reset())
+
+    def do_identify(self, arg: str) -> None:
+        """identify: Make selected badge(s) blink LED to identify themselves."""
+        _ = arg
+        self._print_response_rows(self.hub.identify())
+
     def do_start_mic(self, arg: str) -> None:
         """start_mic: Start microphone sampling."""
         _ = arg
