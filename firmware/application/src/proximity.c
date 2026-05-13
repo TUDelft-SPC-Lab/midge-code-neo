@@ -25,26 +25,21 @@ static struct bt_le_scan_param scan_param = {
 #define BUFFERED_SAMPLES 25
 
 static struct {
-    enum {
-        PROXIMITY_SENSOR_STATE_DISABLED = 0,
-        PROXIMITY_SENSOR_STATE_ACTIVE = 1,
-        PROXIMITY_SENSOR_STATE_STOP = 2,
-        PROXIMITY_SENSOR_STATE_ERR = 3,
-    } state;
+    enum sensor_state state;
     int sample_cnt;
     struct proximity_sensor_entry buffered_samples[BUFFERED_SAMPLES];
 } sensor_data = {
-    .state = PROXIMITY_SENSOR_STATE_DISABLED,
+    .state = SENSOR_STATE_DISABLED,
     .sample_cnt = 0,
 };
 
 int proximity_sensor_init() {
     // check bt already init
-    if (sensor_data.state != PROXIMITY_SENSOR_STATE_DISABLED) {
+    if (sensor_data.state != SENSOR_STATE_DISABLED) {
         LOG_INF("already initialized");
         return -EPERM;
     }
-    sensor_data.state = PROXIMITY_SENSOR_STATE_STOP;
+    sensor_data.state = SENSOR_STATE_STOP;
     return 0;
 }
 
@@ -159,7 +154,7 @@ static void proximity_sensor_start_work_handler(struct k_work* work) {
                 LOG_ERR("FATAL: failed to close proximity sample file");
             }
         } else {
-            sensor_data.state = PROXIMITY_SENSOR_STATE_ACTIVE;
+            sensor_data.state = SENSOR_STATE_ACTIVE;
             sensor_data.sample_cnt = 0;
         }
     } while (0);
@@ -186,7 +181,7 @@ void proximity_sensor_stop_work_handler(struct k_work* work) {
                 int close_ret = storage_close(FILE_TYPE_PROXIMITY);  // ignore return
                 LOG_ERR("failed to write remaining proximity samples, write:%d close:%d", ret,
                         close_ret);
-                sensor_data.state = PROXIMITY_SENSOR_STATE_ERR;
+                sensor_data.state = SENSOR_STATE_ERR;
                 break;
             }
         }
@@ -194,10 +189,10 @@ void proximity_sensor_stop_work_handler(struct k_work* work) {
         ret = storage_close(FILE_TYPE_PROXIMITY);
         if (ret < 0) {
             LOG_ERR("failed to close proximity sample file");
-            sensor_data.state = PROXIMITY_SENSOR_STATE_ERR;
+            sensor_data.state = SENSOR_STATE_ERR;
             break;
         } else {
-            sensor_data.state = PROXIMITY_SENSOR_STATE_STOP;
+            sensor_data.state = SENSOR_STATE_STOP;
         }
     } while (0);
 

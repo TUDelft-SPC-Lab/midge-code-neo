@@ -3,13 +3,6 @@
 
 #include <inttypes.h>
 
-enum audio_sensor_state {
-    AUDIO_SENSOR_STATE_DISABLED = 0,
-    AUDIO_SENSOR_STATE_ACTIVE = 1,
-    AUDIO_SENSOR_STATE_STOP = 2,
-    AUDIO_SENSOR_STATE_ERR = 3,
-};
-
 uint8_t audio_sensor_get_status();
 
 int audio_sensor_init();

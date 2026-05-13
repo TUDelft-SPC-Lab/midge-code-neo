@@ -3,13 +3,6 @@
 
 #include <inttypes.h>
 
-enum imu_sensor_state {
-    IMU_SENSOR_STATE_DISABLED = 0,
-    IMU_SENSOR_STATE_ACTIVE = 1,
-    IMU_SENSOR_STATE_STOP = 2,
-    IMU_SENSOR_STATE_ERR = 3,
-};
-
 uint8_t imu_sensor_get_status();
 
 int imu_sensor_init();

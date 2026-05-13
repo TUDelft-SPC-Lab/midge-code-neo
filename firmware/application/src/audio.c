@@ -50,12 +50,12 @@ struct pcm_stream_cfg stream = {
 };
 
 static struct {
-    enum audio_sensor_state state;
+    enum sensor_state state;
     struct dmic_cfg audio_config;
     uint16_t sample_iter;
     uint16_t high_sample_rate;
     uint8_t low_sample_rate_decimation;
-} sensor_data = {.state = AUDIO_SENSOR_STATE_DISABLED,
+} sensor_data = {.state = SENSOR_STATE_DISABLED,
                  .audio_config = {},
                  .sample_iter = 0,
                  .high_sample_rate = 20000,
@@ -139,7 +139,7 @@ static void audio_init_sampling_work_handler(struct k_work* work) {
         ret = storage_init_sample_file(FILE_TYPE_AUDIO, sensor_data.sample_iter);
         if (ret < 0) {
             LOG_ERR("Failed to open sampling file, status %d", ret);
-            sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+            sensor_data.state = SENSOR_STATE_ERR;
             break;
         }
 
@@ -147,7 +147,7 @@ static void audio_init_sampling_work_handler(struct k_work* work) {
         ret = storage_write(FILE_TYPE_AUDIO, &wav_hdr, sizeof(wav_hdr));
         if (ret < 0) {
             LOG_ERR("Failed to write wav header, status %d", ret);
-            sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+            sensor_data.state = SENSOR_STATE_ERR;
             storage_close(FILE_TYPE_AUDIO);
             break;
         }
@@ -160,7 +160,7 @@ static void audio_init_sampling_work_handler(struct k_work* work) {
         }
         if (ret < 0) {
             LOG_ERR("Failed to open metadata file, status %d", ret);
-            sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+            sensor_data.state = SENSOR_STATE_ERR;
             storage_close(FILE_TYPE_AUDIO);
             break;
         }
@@ -170,7 +170,7 @@ static void audio_init_sampling_work_handler(struct k_work* work) {
         if (ret < 0) {
             // error on trigger
             LOG_ERR("Failed to trigger start");
-            sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+            sensor_data.state = SENSOR_STATE_ERR;
             storage_close(FILE_TYPE_AUDIO);
             storage_close(FILE_TYPE_AUDIO_METADATA);
             break;
@@ -201,12 +201,12 @@ static void audio_init_sampling_work_handler(struct k_work* work) {
 
         if (ret < 0) {
             LOG_ERR("Failed to schedule audio sample processing work, status %d", ret);
-            sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+            sensor_data.state = SENSOR_STATE_ERR;
             dmic_trigger(dmic_dev, DMIC_TRIGGER_STOP);
             storage_close(FILE_TYPE_AUDIO);
             storage_close(FILE_TYPE_AUDIO_METADATA);
         } else {
-            sensor_data.state = AUDIO_SENSOR_STATE_ACTIVE;
+            sensor_data.state = SENSOR_STATE_ACTIVE;
         }
     } while (0);
     if (ret < 0) {
@@ -225,7 +225,7 @@ static void audio_sample_process_work_handler(struct k_work* work) {
     void* audio_buffer;
     uint32_t audio_buffer_size;
     int ret;
-    if (sensor_data.state == AUDIO_SENSOR_STATE_ACTIVE) {
+    if (sensor_data.state == SENSOR_STATE_ACTIVE) {
         // read buffer
         ret = dmic_read(dmic_dev, 0, &audio_buffer, &audio_buffer_size, ctx->inter_sample_delay_ms);
         if (ret < 0) {
@@ -248,14 +248,14 @@ static void audio_sample_process_work_handler(struct k_work* work) {
                         "Failed to retrigger start after sample read timeout, status %d, "
                         "aborting\n",
                         retry_status);
-                    sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+                    sensor_data.state = SENSOR_STATE_ERR;
                 } else {
                     ret = write_metadata(&metadata);
                 }
                 // timestamp should be added to metadata file to keep track of dropped samples
             } else {
                 LOG_ERR("unknown read err %d\n, sample probably dropped, aborting", ret);
-                sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+                sensor_data.state = SENSOR_STATE_ERR;
             }
         } else {
             if (decimate) {
@@ -283,12 +283,12 @@ static void audio_sample_process_work_handler(struct k_work* work) {
             if (ret < 0) {
                 LOG_ERR("write sample failed \n");
                 // sampling will stop, file system could be compromised.
-                sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+                sensor_data.state = SENSOR_STATE_ERR;
             }
         }
     }
 
-    if (sensor_data.state == AUDIO_SENSOR_STATE_ACTIVE) {
+    if (sensor_data.state == SENSOR_STATE_ACTIVE) {
         k_work_reschedule(&ctx->process_work, K_NO_WAIT);
     } else {
         // trigger stop
@@ -296,7 +296,7 @@ static void audio_sample_process_work_handler(struct k_work* work) {
         if (ret < 0) {
             // error on trigger
             LOG_ERR("trigger stop failed, critical error\n");
-            sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+            sensor_data.state = SENSOR_STATE_ERR;
         } else {
             struct audio_meta_data metadata = {
                 .timestamp_ms = time_control_get_timestamp(),
@@ -308,21 +308,21 @@ static void audio_sample_process_work_handler(struct k_work* work) {
             };
             ret = write_metadata(&metadata);
 
-            sensor_data.state = AUDIO_SENSOR_STATE_STOP;
+            sensor_data.state = SENSOR_STATE_STOP;
             LOG_INF("finished sampling round");
 
             // update the wav header with correct data and total file size info
             ret = storage_seek_start(FILE_TYPE_AUDIO);
             if (ret < 0) {
                 LOG_ERR("Failed to seek to start of audio file to update header, status %d", ret);
-                sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+                sensor_data.state = SENSOR_STATE_ERR;
             } else {
                 // add total data size to header
                 wav_hdr.file_size = wav_hdr.data_bloc_size + sizeof(wav_hdr) - 8;
                 ret = storage_write(FILE_TYPE_AUDIO, &wav_hdr, sizeof(wav_hdr));
                 if (ret < 0) {
                     LOG_ERR("Failed to update wav header with file info, status %d", ret);
-                    sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+                    sensor_data.state = SENSOR_STATE_ERR;
                 }
             }
 
@@ -330,7 +330,7 @@ static void audio_sample_process_work_handler(struct k_work* work) {
             int ret2 = storage_close(FILE_TYPE_AUDIO_METADATA);
             if ((ret < 0) || (ret2 < 0)) {
                 LOG_ERR("Failed to close files, status samples: %d  metadata: %d", ret, ret2);
-                sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+                sensor_data.state = SENSOR_STATE_ERR;
                 ret = (ret < 0) ? ret : ret2;  // return the error code of the first failure, if any
             }
         }
@@ -387,7 +387,7 @@ int audio_sensor_start(int sample_iter, uint16_t high_sample_rate,
                 dmic_build_channel_map(1, 0, PDM_CHAN_RIGHT);
         } break;
         default: {
-            sensor_data.state = AUDIO_SENSOR_STATE_STOP;
+            sensor_data.state = SENSOR_STATE_STOP;
             return -EINVAL;
         }
     }
@@ -402,7 +402,7 @@ int audio_sensor_start(int sample_iter, uint16_t high_sample_rate,
         } break;
         case PRIVACY_SWITCH_POS_OFF:
         default: {
-            sensor_data.state = AUDIO_SENSOR_STATE_DISABLED;
+            sensor_data.state = SENSOR_STATE_DISABLED;
             return -EACCES;
         }
     }
@@ -445,16 +445,16 @@ int audio_sensor_start(int sample_iter, uint16_t high_sample_rate,
 
 int audio_sensor_stop() {
     int ret = 0;
-    if (sensor_data.state != AUDIO_SENSOR_STATE_ACTIVE) {
+    if (sensor_data.state != SENSOR_STATE_ACTIVE) {
         LOG_ERR("Invalid state to stop audio sampling, state %d", sensor_data.state);
         ret = -EPERM;
     } else {
-        sensor_data.state = AUDIO_SENSOR_STATE_STOP;
+        sensor_data.state = SENSOR_STATE_STOP;
         int ret = k_sem_take(&audio_sampling_work_ctx.stop_done, K_SECONDS(1));
         if (ret < 0) {
             LOG_ERR("Failed to take stop done semaphore, status %d, forcing work abort", ret);
             ret = k_work_cancel_delayable(&audio_sampling_work_ctx.process_work);
-            sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+            sensor_data.state = SENSOR_STATE_ERR;
             if (ret < 0) {
                 LOG_ERR("Failed to cancel audio processing work, status %d", ret);
             }
@@ -468,15 +468,15 @@ int audio_sensor_stop() {
 int audio_sensor_init(void) {
     if (!device_is_ready(dmic_dev)) {
         LOG_ERR("%s is not ready", dmic_dev->name);
-        sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+        sensor_data.state = SENSOR_STATE_ERR;
         return -1;
     }
     if (k_mem_slab_init(&mem_slab, mem_slab_buffer, MAX_BLOCK_SIZE, BLOCK_COUNT)) {
         LOG_ERR("Failed to initialize memory slab for audio samples");
-        sensor_data.state = AUDIO_SENSOR_STATE_ERR;
+        sensor_data.state = SENSOR_STATE_ERR;
         return -1;
     }
-    sensor_data.state = AUDIO_SENSOR_STATE_STOP;
+    sensor_data.state = SENSOR_STATE_STOP;
     LOG_INF("init ok");
     return 0;
 }

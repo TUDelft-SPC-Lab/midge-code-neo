@@ -12,17 +12,17 @@
 
 LOG_MODULE_REGISTER(imu);
 
-static uint8_t imu_sensor_state = IMU_SENSOR_STATE_DISABLED;
+static uint8_t imu_sensor_state = SENSOR_STATE_DISABLED;
 
 uint8_t imu_sensor_get_status() { return imu_sensor_state; }
 
 int imu_sensor_init() {
     int ret = imu_drv_api.init();
     if (ret != 0) {
-        imu_sensor_state = IMU_SENSOR_STATE_ERR;
+        imu_sensor_state = SENSOR_STATE_ERR;
         LOG_ERR("Failed to initialize IMU driver: %d", ret);
     } else {
-        imu_sensor_state = IMU_SENSOR_STATE_STOP;
+        imu_sensor_state = SENSOR_STATE_STOP;
         LOG_INF("IMU driver initialized successfully");
     }
     return ret;
@@ -45,10 +45,10 @@ int imu_sensor_start(int sample_iter, uint16_t acc_fsr, uint16_t gyr_fsr, uint16
     ret = imu_drv_api.start(sample_iter);
     if (ret != 0) {
         LOG_ERR("Failed to start IMU sampling: %d", ret);
-        imu_sensor_state = IMU_SENSOR_STATE_ERR;
+        imu_sensor_state = SENSOR_STATE_ERR;
     } else {
         LOG_INF("IMU sampling started successfully");
-        imu_sensor_state = IMU_SENSOR_STATE_ACTIVE;
+        imu_sensor_state = SENSOR_STATE_ACTIVE;
     }
     return ret;
 }
@@ -57,10 +57,10 @@ int imu_sensor_stop() {
     int ret = imu_drv_api.stop();
     if (ret != 0) {
         LOG_ERR("Failed to stop IMU sampling: %d", ret);
-        imu_sensor_state = IMU_SENSOR_STATE_ERR;
+        imu_sensor_state = SENSOR_STATE_ERR;
     } else {
         LOG_INF("IMU sampling stopped successfully");
-        imu_sensor_state = IMU_SENSOR_STATE_STOP;
+        imu_sensor_state = SENSOR_STATE_STOP;
     }
     return ret;
 }

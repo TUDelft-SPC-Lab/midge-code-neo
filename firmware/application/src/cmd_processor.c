@@ -59,11 +59,11 @@ int cmd_status(uint8_t* data) {
     resp_data->badge_assignment = advertised_data.badge_assignment;
     resp_data->sync_status = time_control_get_status();
     resp_data->sync_error_ms = error;
-    resp_data->audio_status = audio_sensor_get_status();
+    resp_data->audio_state = audio_sensor_get_status();
     resp_data->battery_millivolts = mv;
-    resp_data->proximity_status = proximity_sensor_get_status();
+    resp_data->proximity_state = proximity_sensor_get_status();
     resp_data->storage_status = storage_get_status();
-    resp_data->imu_status = imu_sensor_get_status();
+    resp_data->imu_state = imu_sensor_get_status();
     return ret;
 }
 

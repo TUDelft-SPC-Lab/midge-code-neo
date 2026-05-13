@@ -9,6 +9,7 @@
 #include <zephyr/sys/util.h>
 
 #include "audio.h"
+#include "midge_protocol.h"
 
 LOG_MODULE_REGISTER(privacy_switch);
 
@@ -27,8 +28,8 @@ void update_privacy_sw_pos() {
     int off = gpio_pin_get(sw_off.port, sw_off.pin);
     int low = gpio_pin_get(sw_low.port, sw_low.pin);
     int high = gpio_pin_get(sw_high.port, sw_high.pin);
-    enum audio_sensor_state state = audio_sensor_get_status();
-    if (state == AUDIO_SENSOR_STATE_ACTIVE) {
+    enum sensor_state state = audio_sensor_get_status();
+    if (state == SENSOR_STATE_ACTIVE) {
         audio_sensor_stop();
     }
     LOG_INF("current switch state: off:%d low:%d hi:%d", off, low, high);

@@ -9,6 +9,16 @@ INTERFACE_CMD_SZ = INTERFACE_CMD_DATA_SZ + 3
 INTERFACE_MAX_FILE_NAME = 12 * 3  # 3 levels of depth, i.e. SD/folder/file, 8.3 names
 
 
+class SensorState(IntEnum):
+    DISABLED = 0
+    ACTIVE = 1
+    STOP = 2
+    ERR = 3
+
+    def __str__(self):
+        return f"{self.name}:{self.value}"
+
+
 class MidgeBadgeCommandID(IntEnum):
     CMD_ID_RESET = ord("0")
     CMD_ID_IDENTIFY = ord("1")
@@ -186,9 +196,9 @@ class CmdStatusResponse(MidgeBadgeCommand):
     _fields_ = [
         ("sync_status", c_uint8),
         ("storage_status", c_uint8),
-        ("audio_status", c_uint8),
-        ("proximity_status", c_uint8),
-        ("imu_status", c_uint8),
+        ("audio_state", c_uint8),
+        ("proximity_state", c_uint8),
+        ("imu_state", c_uint8),
         ("battery_millivolts", c_int16),
         ("badge_assignment", BadgeAssignment),
         ("sync_error_ms", c_int64),  # ref - interp

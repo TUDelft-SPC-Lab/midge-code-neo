@@ -8,6 +8,15 @@
 #define INTERFACE_CMD_SZ (INTERFACE_CMD_DATA_SZ + 3)  // SOT+CMD_ID+DATA+EOT
 #define INTERFACE_MAX_FILE_NAME ((size_t)12U * 3U)    // 8.3 Filename, 3 lvl depth
 
+// ==== Flags and constants =========== //
+
+enum sensor_state : uint8_t {
+    SENSOR_STATE_DISABLED = 0,
+    SENSOR_STATE_ACTIVE = 1,
+    SENSOR_STATE_STOP = 2,
+    SENSOR_STATE_ERR = 3,
+};
+
 // ==== Miscellaneous data types ===== //
 union __attribute__((packed)) badge_assignment {
     struct __attribute__((packed)) {
@@ -77,9 +86,9 @@ struct __attribute__((packed)) cmd_status_request {
 struct __attribute__((packed)) cmd_status_response {
     uint8_t sync_status;
     uint8_t storage_status;
-    uint8_t audio_status;
-    uint8_t proximity_status;
-    uint8_t imu_status;
+    uint8_t audio_state;
+    uint8_t proximity_state;
+    uint8_t imu_state;
     int16_t battery_millivolts;
     union badge_assignment badge_assignment;
     int64_t sync_error_ms;  // ref - interp
