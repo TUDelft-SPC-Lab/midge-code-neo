@@ -32,7 +32,7 @@ static void storage_sync_timer_handler(struct k_timer* timer);
 K_WORK_DEFINE(storage_sync_work, storage_sync_work_handler);
 K_TIMER_DEFINE(storage_sync_timer, storage_sync_timer_handler, NULL);
 
-static char active_experiment_dir[MAX_PATH_LEN];
+static char active_experiment_dir[MAX_PATH_LEN] = "DUMMY PATH";
 
 enum mb_file_status {
     MB_FILE_STATUS_INACTIVE = 0,
@@ -421,7 +421,7 @@ int storage_erase(char* path) {
             LOG_ERR("could not stat file %s to erase, err %d", path, res);
         } else {
             if (file_stat.type == FS_DIR_ENTRY_DIR) {
-                LOG_ERR("Trying to erase a folder %s", path);
+                LOG_WRN("Trying to erase a folder %s", path);
             }
             res = fs_unlink(path);
             if (res < 0) {
@@ -671,7 +671,7 @@ int storage_write_timesync(struct timesync_entry* entry) {
     //           interpolated);
     k_yield();
     // ret = fs_write(&timesync_file, buff, strlen((char*)buff));
-    ret = fs_write(&timesync_file, &entry, sizeof(entry));
+    ret = fs_write(&timesync_file, entry, sizeof(struct timesync_entry));
     if (ret < 0) {
         LOG_ERR("failed to write timesync event to file, err %d", ret);
     }

@@ -65,7 +65,7 @@ class MidgeBadgeConsole(cmd.Cmd):
         address = None if arg == "any" else arg
         client = MidgeBadgeClient(address)
         # Launch the client in a new thread
-        Thread(target=lambda: asyncio.run(client.start())).start()
+        Thread(target=lambda: asyncio.run(client.start()), daemon=True).start()
         # wait a bit to see if the connection was established
         time.sleep(4)
 

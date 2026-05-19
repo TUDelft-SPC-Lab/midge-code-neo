@@ -68,7 +68,7 @@ static bool scan_data_parse(struct bt_data* data, void* out) {
         }
     } else if (data->type == BT_DATA_MANUFACTURER_DATA &&
                data->data_len == sizeof(struct custom_advertisement_data)) {
-        parse_out->adv_data = (struct custom_advertisement_data*)data->data;
+        parse_out->adv_data = (struct custom_advertisement_data*)(data->data);
         return false;  // stop parsing
     }
     return true;  // continue parsing
@@ -106,6 +106,7 @@ void scan_callback(const bt_addr_le_t* addr, int8_t rssi, uint8_t adv_type,
             k_mutex_unlock(&proximity_sensor_mutex);
             return;
         }
+        sample->advertised_data = *parse_out.adv_data;
         sensor_data.sample_cnt++;
         if (sensor_data.sample_cnt == BUFFERED_SAMPLES) {
             struct simple_work_ctx ctx;

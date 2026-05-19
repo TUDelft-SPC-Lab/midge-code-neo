@@ -31,6 +31,7 @@ from .protocol import (
 from .schema import BadgeSchema, ExperimentSchema, GroupSchema
 
 logger = logging.getLogger(__name__)
+CONNECTION_TIMEOUT_SECONDS = 10
 
 
 class MidgeBadgeHubException(Exception):
@@ -139,7 +140,7 @@ class MidgeBadgeHub:
             thread = Thread(target=lambda: asyncio.run(client.start()), daemon=True)
             thread.start()
             try:
-                timeout_seconds = 4
+                timeout_seconds = CONNECTION_TIMEOUT_SECONDS
                 start = time_ns()
                 while not client.get_connected() and ((time_ns() - start) / 1_000_000_000) < timeout_seconds:
                     sleep(0.1)
@@ -355,7 +356,7 @@ class MidgeBadgeHub:
             client = MidgeBadgeClient(self._selected_badge.mac)
             thread = Thread(target=lambda: asyncio.run(client.start()), daemon=True)
             thread.start()
-            timeout_seconds = 6
+            timeout_seconds = CONNECTION_TIMEOUT_SECONDS
             start = time_ns()
             while not client.get_connected() and ((time_ns() - start) / 1_000_000_000) < timeout_seconds:
                 sleep(0.05)

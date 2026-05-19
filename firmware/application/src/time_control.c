@@ -126,6 +126,7 @@ int time_control_sync(uint64_t ref_ms, int64_t* error_ms) {
     }
     *error_ms = error;
     int ret = 0;
+#ifdef HEURISTIC_TIME_SYNC
     if (delta > BLE_LATENCY_THRESHOLD_MS) {
         LOG_INF("Performing time sync, error: %" PRId64 " ms, assumed latency: %d ms", error,
                 BLE_LATENCY_AVG_RX_MS);
@@ -141,10 +142,25 @@ int time_control_sync(uint64_t ref_ms, int64_t* error_ms) {
         } else {
             status = TIME_SYNCED;
         }
+
     } else {
         status = TIME_SYNCED_NO_CHANGE;
         LOG_INF("Not performing time sync, error not significant enough");
     }
+#else
+    ret = storage_write_timesync(&entry);
+    if (ret < 0) {
+        LOG_ERR("Failed to write time sync info to storage, status %d", ret);
+        status = TIME_ERR;
+    }
+    ret = time_control_update(ref_ms);
+    if (ret < 0) {
+        LOG_ERR("Failed to perform the time sync");
+        status = TIME_ERR;
+    } else {
+        status = TIME_SYNCED;
+    }
+#endif
     return ret;
 }
 
