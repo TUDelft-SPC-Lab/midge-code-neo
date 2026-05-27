@@ -27,10 +27,12 @@ static struct bt_le_scan_param scan_param = {
 static struct {
     enum sensor_state state;
     int sample_cnt;
-    struct proximity_sensor_entry buffered_samples[BUFFERED_SAMPLES];
+    int buffer_index;
+    struct proximity_sensor_entry buffered_samples[2][BUFFERED_SAMPLES];
 } sensor_data = {
     .state = SENSOR_STATE_DISABLED,
     .sample_cnt = 0,
+    .buffer_index = 0,
 };
 
 int proximity_sensor_init() {
@@ -81,9 +83,10 @@ static bool scan_data_parse(struct bt_data* data, void* out) {
  */
 static void scan_write_samples_work_handler(struct k_work* work) {
     struct simple_work_ctx* ctx = CONTAINER_OF(work, struct simple_work_ctx, work);
-    sensor_data.sample_cnt = 0;
-    ctx->ret = storage_write(FILE_TYPE_PROXIMITY, sensor_data.buffered_samples,
+    int index = (sensor_data.buffer_index + 1) % 2;
+    ctx->ret = storage_write(FILE_TYPE_PROXIMITY, sensor_data.buffered_samples[index],
                              sizeof(struct proximity_sensor_entry) * BUFFERED_SAMPLES);
+
     k_sem_give(&ctx->done);
 }
 
@@ -92,7 +95,7 @@ void scan_callback(const bt_addr_le_t* addr, int8_t rssi, uint8_t adv_type,
                    struct net_buf_simple* buf) {
     if (k_mutex_lock(&proximity_sensor_mutex, K_MSEC(50)) == 0) {
         struct proximity_sensor_entry* sample =
-            &sensor_data.buffered_samples[sensor_data.sample_cnt];
+            &sensor_data.buffered_samples[sensor_data.buffer_index][sensor_data.sample_cnt];
         sample->rssi.i8 = rssi;
         sample->timestamp = time_control_get_timestamp();
         memcpy(sample->mac_address, addr->a.val, 6);
@@ -109,6 +112,10 @@ void scan_callback(const bt_addr_le_t* addr, int8_t rssi, uint8_t adv_type,
         sample->advertised_data = *parse_out.adv_data;
         sensor_data.sample_cnt++;
         if (sensor_data.sample_cnt == BUFFERED_SAMPLES) {
+            sensor_data.buffer_index = (sensor_data.buffer_index + 1) % 2;
+            sensor_data.sample_cnt = 0;
+            k_mutex_unlock(&proximity_sensor_mutex);
+
             struct simple_work_ctx ctx;
             k_work_init(&ctx.work, scan_write_samples_work_handler);
             k_sem_init(&ctx.done, 0, 1);
@@ -122,8 +129,9 @@ void scan_callback(const bt_addr_le_t* addr, int8_t rssi, uint8_t adv_type,
             } else {
                 // LOG_INF("wrote %d proximity samples to storage", BUFFERED_SAMPLES);
             }
+        } else {
+            k_mutex_unlock(&proximity_sensor_mutex);
         }
-        k_mutex_unlock(&proximity_sensor_mutex);
     } else {
         LOG_ERR("failed to add sample");
     }

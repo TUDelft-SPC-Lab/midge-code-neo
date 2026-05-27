@@ -19,8 +19,8 @@ def main():
     output_path = args.output if (args.output) else "/dev/stdout"
     with open(output_path, "w") as output_file:
         output_file.write(
-            "reference_timestamp, interpolated_timestamp, internal_timestamp, "
-            "reference_datetime, interpolated_datetime, internal_datetime\n"
+            "reference_timestamp,interpolated_timestamp,internal_timestamp,"
+            "reference_datetime,interpolated_datetime,internal_datetime\n"
         )
         with open(input_path, "rb") as file:
             while True:
@@ -35,8 +35,5 @@ def main():
                 reference_dt = datetime.fromtimestamp(reference_ts / 1000.0)
                 interpolated_dt = datetime.fromtimestamp(interpolated_ts / 1000.0)
                 internal_dt = datetime.fromtimestamp(internal_ts / 1000.0)
-                msg = (
-                    f"{reference_ts}, {interpolated_ts}, {internal_ts},"
-                    f"{reference_dt}, {interpolated_dt}, {internal_dt}\n"
-                )
+                msg = f"{reference_ts},{interpolated_ts},{internal_ts},{reference_dt},{interpolated_dt},{internal_dt}\n"
                 output_file.write(msg)

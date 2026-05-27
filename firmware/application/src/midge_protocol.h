@@ -78,8 +78,6 @@ struct __attribute__((packed)) cmd_setup_experiment_response {
     int32_t status_code;
 };
 
-// uint16_t configured_datarate
-
 struct __attribute__((packed)) cmd_status_request {
     uint64_t millis_since_epoch;
 };
