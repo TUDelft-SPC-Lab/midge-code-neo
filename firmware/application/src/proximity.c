@@ -55,23 +55,29 @@ int proximity_sensor_change_config(uint16_t interval, uint16_t window) {
 
 struct scan_data_parse_out {
     struct custom_advertisement_data* adv_data;
-    bool valid;
+    bool valid_name;
+    bool valid_adv;
 };
 
 static bool scan_data_parse(struct bt_data* data, void* out) {
     struct scan_data_parse_out* parse_out = (struct scan_data_parse_out*)out;
     if (data->type == BT_DATA_NAME_COMPLETE) {
         if (strncmp((char*)data->data, CONFIG_BT_DEVICE_NAME, data->data_len) == 0) {
-            parse_out->valid = true;
-            return true;
+            parse_out->valid_name = true;
+            return !parse_out->valid_adv;  // if adv ready, stop parsing
         } else {
-            parse_out->valid = false;
+            parse_out->valid_name = false;
             return false;  // stop parsing, not valid
         }
-    } else if (data->type == BT_DATA_MANUFACTURER_DATA &&
-               data->data_len == sizeof(struct custom_advertisement_data)) {
-        parse_out->adv_data = (struct custom_advertisement_data*)(data->data);
-        return false;  // stop parsing
+    } else if (data->type == BT_DATA_MANUFACTURER_DATA) {
+        if (data->data_len == sizeof(struct custom_advertisement_data)) {
+            parse_out->adv_data = (struct custom_advertisement_data*)(data->data);
+            parse_out->valid_adv = true;
+            return parse_out->valid_name;  // if name ready, stop parsing
+        } else {
+            parse_out->valid_adv = false;
+            return false;
+        }
     }
     return true;  // continue parsing
 }
@@ -102,10 +108,11 @@ void scan_callback(const bt_addr_le_t* addr, int8_t rssi, uint8_t adv_type,
         // obtain the advertised data
         struct scan_data_parse_out parse_out = {
             .adv_data = &sample->advertised_data,
-            .valid = false,
+            .valid_name = false,
+            .valid_adv = false,
         };
         bt_data_parse(buf, scan_data_parse, &parse_out);
-        if (!parse_out.valid) {
+        if (!parse_out.valid_name || !parse_out.valid_adv) {
             k_mutex_unlock(&proximity_sensor_mutex);
             return;
         }
@@ -184,7 +191,8 @@ void proximity_sensor_stop_work_handler(struct k_work* work) {
 
         // write remaining data
         if (sensor_data.sample_cnt != 0) {
-            ret = storage_write(FILE_TYPE_PROXIMITY, sensor_data.buffered_samples,
+            ret = storage_write(FILE_TYPE_PROXIMITY,
+                                sensor_data.buffered_samples[sensor_data.buffer_index],
                                 sizeof(struct proximity_sensor_entry) * sensor_data.sample_cnt);
             if (ret < 0) {
                 int close_ret = storage_close(FILE_TYPE_PROXIMITY);  // ignore return

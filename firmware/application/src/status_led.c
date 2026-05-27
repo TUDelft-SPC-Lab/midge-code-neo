@@ -62,7 +62,14 @@ int led_report_active(bool active) { return gpio_pin_set_dt(&led, active ? 0 : 1
 
 int led_identify(void) {
     // get the current led state
-    bool led_on = gpio_pin_get_dt(&led);
+    int ret = gpio_pin_get_dt(&led);
+    bool led_on;
+    if (ret < 0) {
+        LOG_ERR("Failed to get LED state");
+        led_on = false;  // default to off
+    } else {
+        led_on = ret;
+    }
 
     for (int i = 0; i < 100; i++) {
         int ret = gpio_pin_toggle_dt(&led);
