@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "zephyr",
+            "name": "zephyr (CMSIS-DAP)",
             "cwd": "${workspaceFolder}/firmware",
             "executable": "build/zephyr/zephyr.elf",
             "request": "launch",
@@ -31,6 +31,32 @@
                     }
                 ]
             }
+        },
+         {
+            "name": "zephyr (J-Link)",
+            "cwd": "${workspaceFolder}/firmware",
+            "executable": "build/zephyr/zephyr.elf",
+            "request": "launch",
+            "preLaunchTask": "build-firmware",
+            "type": "cortex-debug",
+            "servertype": "jlink",
+            "device": "nrf52",
+            "svdFile": "/tmp/nrf52832.svd",
+            "interface": "swd",
+            "armToolchainPath": "",
+            "preLaunchCommands":["set remotetimeout 60"],
+            "rttConfig": {
+                "enabled": true,
+                "address": "auto",
+                "clearSearch": false,
+                "decoders": [
+                    {
+                        "port": 0,
+                        "type": "console"
+                    }
+                ]
+            }
         }
+
     ]
 }
