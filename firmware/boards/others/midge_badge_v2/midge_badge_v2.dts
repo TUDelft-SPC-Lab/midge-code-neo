@@ -1,0 +1,232 @@
+
+/dts-v1/;
+#include <nordic/nrf52840_qfaa.dtsi>
+#include "midge_badge_v2-pinctrl.dtsi"
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/sensor/lsm6dso.h>
+/**
+ * LED_IND PO.03 pin 19
+ * SCL     PO.02 pin 15
+ * SDA     PO.00 pin 13
+ * INT1    PO.30 pin 11
+ * CD      PO.09 pin 25
+ * SW      PO.11 pin 27
+ * CS      PO.15 pin 25
+ * MOSI    PO.16 pin 34
+ * CLK     PO.17 pin 35
+ * MISO    PO.18 pin 38
+ * BATSEN  PO.05 pin 21
+ * MICDOUT PO.13 pin 31
+ * MICCLK  PO.14 pin 32
+ * SW2OFF  PO.25 pin 6
+ * SW2LOW  PO.26 pin 7
+ * SW2HIGH PO.27 pin 8
+ */
+
+
+/ {
+	model = "midge_badge_v2";
+	compatible = "others,midge-badge-v2";
+
+	chosen {
+		/*zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,uart-mcumgr = &uart0;
+		zephyr,bt-mon-uart = &uart0;
+		zephyr,bt-c2h-uart = &uart0;*/
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+	};
+
+	/*leds {
+		compatible = "gpio-leds";
+
+		led0: led_0 {
+			gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+			label = "Status led";
+		};
+	};*/
+
+	pwm_leds {
+		compatible = "pwm-leds";
+
+		led0: led_0 {
+			pwms = <&pwm0 0 PWM_MSEC(20) PWM_POLARITY_INVERTED>;
+			label = "PWM led";
+		};
+	};
+
+	switch_pos {
+		compatible= "gpio-keys";
+
+		sw_audio_off: sw_0{
+			gpios = <&gpio0 25 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;
+			label = "Audio switch OFF positon";
+		};
+		sw_audio_low: sw_1{
+			gpios = <&gpio0 26 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;
+			label = "Audio switch LOW positon";
+		};
+		sw_audio_high: sw_2{
+			gpios = <&gpio0 27 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;
+			label = "Audio switch HIGH positon";
+		};
+	};
+
+	zephyr,user {
+		io-channels=<&adc 0>;
+	};
+
+	/* These aliases are provided for compatibility with samples */
+	aliases {
+		led0 = &led0;
+		sw-audio-off = &sw_audio_off;
+		sw-audio-low = &sw_audio_low;
+		sw-audio-high = &sw_audio_high;
+		mcuboot-led0 = &led0;
+		mic-params = &audio_mic;
+		imu-dev = &imu;
+		mag-dev = &mag;
+	};
+
+	audio_mic: microphone {
+		compatible = "generic,pdm-mic";
+		min-pdm-clk-freq = <1000000>;
+		max-pdm-clk-freq = <3250000>;
+		min-pdm-clk-dc = <40>;
+		max-pdm-clk-dc = <60>;
+	};
+};
+
+&pwm0 {
+	status = "okay";
+	pinctrl-0 = <&pwm0_default>;
+	pinctrl-names = "default";
+};
+
+/*&reg {
+	regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
+};
+
+
+&uicr {
+	gpio-as-nreset;
+};
+
+
+&nfct {
+	status = "okay";
+};*/
+
+&adc {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	channel@0 {
+		reg = <0>;
+		zephyr,gain = "ADC_GAIN_1_4";
+		zephyr,reference = "ADC_REF_INTERNAL"; /* 600mV */
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>; /* 10us */
+		zephyr,input-positive = <NRF_SAADC_AIN3>; /*PO.05*/
+		zephyr,resolution = <12>;
+	};
+};
+
+
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&spi3 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&spi1_default>;
+	pinctrl-1 = <&spi1_sleep>;
+	cs-gpios = <&gpio0 15 GPIO_ACTIVE_LOW>;
+
+	sdhc0: sdhc@0 {
+		compatible = "zephyr,sdhc-spi-slot";
+		reg = <0>;
+		status = "okay";
+		mmc {
+			compatible = "zephyr,sdmmc-disk";
+			disk-name = "SD";
+			status = "okay";
+		};
+		spi-max-frequency = <8000000>;
+	};
+};
+
+dmic_dev: &pdm0 {
+	status = "okay";
+	pinctrl-0 = <&pdm0_default_alt>;
+	pinctrl-names = "default";
+	clock-source = "PCLK32M_HFXO";
+};
+
+&i2c1 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-1 = <&i2c0_sleep>;
+	pinctrl-names = "default", "sleep";
+	clock-frequency = <400000>;
+	zephyr,concat-buf-size = <255>;
+	zephyr,flash-buf-max-size = <255>;
+
+	mag: ak09918@c {
+		compatible = "asahi-kasei,akm09918c";
+		reg = <0x0c>;
+		status = "okay";
+	};
+
+	imu: lsm6dso@6b {
+		compatible = "st,lsm6dso";
+		reg = <0x6b>;
+		status = "okay";
+		irq-gpios = <&gpio0 30 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+		/*int-pin = <1>;*/
+		accel-range = <LSM6DSO_DT_FS_4G>;
+		accel-odr = <LSM6DSO_DT_ODR_52Hz>;
+		/*accel-pm = <LSM6DSO_DT_XL_LP_NORMAL_MODE>;*/
+		/*gyro-pm = <LSM6DSO_DT_GY_NORMAL_MODE>;*/
+		gyro-range = <LSM6DSO_DT_FS_1000DPS>;
+		gyro-odr = <LSM6DSO_DT_ODR_52Hz>;
+	};
+};
+
+&flash0 {
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x00000000 0xc000>;
+		};
+		slot0_partition: partition@c000 {
+			label = "image-0";
+			reg = <0x0000C000 0x32000>;
+		};
+		slot1_partition: partition@3e000 {
+			label = "image-1";
+			reg = <0x0003E000 0x32000>;
+		};
+		scratch_partition: partition@70000 {
+			label = "image-scratch";
+			reg = <0x00070000 0xa000>;
+		};
+		storage_partition: partition@7a000 {
+			label = "storage";
+			reg = <0x0007a000 0x00006000>;
+		};
+	};
+};

@@ -28,7 +28,7 @@ static struct {
     enum sensor_state state;
     int sample_cnt;
     int buffer_index;
-    struct proximity_sensor_entry buffered_samples[2][BUFFERED_SAMPLES];
+    struct proximity_sensor_entry buffered_samples[CONFIG_MCN_PROXIMITY_BUFFERS][BUFFERED_SAMPLES];
 } sensor_data = {
     .state = SENSOR_STATE_DISABLED,
     .sample_cnt = 0,
@@ -82,15 +82,21 @@ static bool scan_data_parse(struct bt_data* data, void* out) {
     return true;  // continue parsing
 }
 
+struct scan_write_work_ctx {
+    struct k_work work;
+    struct k_sem done;
+    int buffer_index;
+    int ret;
+};
+
 /**
  * @brief Required to keep file management in the system workqueu context
  *
  * @param work
  */
 static void scan_write_samples_work_handler(struct k_work* work) {
-    struct simple_work_ctx* ctx = CONTAINER_OF(work, struct simple_work_ctx, work);
-    int index = (sensor_data.buffer_index + 1) % 2;
-    ctx->ret = storage_write(FILE_TYPE_PROXIMITY, sensor_data.buffered_samples[index],
+    struct scan_write_work_ctx* ctx = CONTAINER_OF(work, struct scan_write_work_ctx, work);
+    ctx->ret = storage_write(FILE_TYPE_PROXIMITY, sensor_data.buffered_samples[ctx->buffer_index],
                              sizeof(struct proximity_sensor_entry) * BUFFERED_SAMPLES);
 
     k_sem_give(&ctx->done);
@@ -119,14 +125,17 @@ void scan_callback(const bt_addr_le_t* addr, int8_t rssi, uint8_t adv_type,
         sample->advertised_data = *parse_out.adv_data;
         sensor_data.sample_cnt++;
         if (sensor_data.sample_cnt == BUFFERED_SAMPLES) {
-            sensor_data.buffer_index = (sensor_data.buffer_index + 1) % 2;
-            sensor_data.sample_cnt = 0;
-            k_mutex_unlock(&proximity_sensor_mutex);
-
-            struct simple_work_ctx ctx;
+            struct scan_write_work_ctx ctx;
             k_work_init(&ctx.work, scan_write_samples_work_handler);
             k_sem_init(&ctx.done, 0, 1);
             k_work_submit(&ctx.work);
+            ctx.buffer_index = sensor_data.buffer_index;
+
+            sensor_data.buffer_index =
+                (sensor_data.buffer_index + 1) % CONFIG_MCN_PROXIMITY_BUFFERS;
+            sensor_data.sample_cnt = 0;
+
+            k_mutex_unlock(&proximity_sensor_mutex);
 
             int retw = k_sem_take(&ctx.done, K_FOREVER);
             if (retw != 0) {
