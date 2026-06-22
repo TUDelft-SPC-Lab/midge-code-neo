@@ -4,26 +4,18 @@
         {
             "label": "firmware-guiconfig",
             "type": "shell",
-            "command": "west build -p auto -b midge_badge_v1 application -t guiconfig",
+            "command": "west build -p auto -b ${input:board} application -t guiconfig",
             "options": {
                 "cwd": "${workspaceFolder}/firmware"
             }
-        },
-        {
-            "label": "pull-svd",
-            "type": "shell",
-            "command": "wget -O /tmp/nrf52832.svd https://raw.githubusercontent.com/embassy-rs/nrf-pac/refs/heads/main/svd/nrf52832.svd"
         },
         {
             "label": "build-firmware",
             "type": "shell",
-            "command": "west build -p auto -b midge_badge_v1 application",
+            "command": "sh build.sh -b ${input:board}",
             "options": {
                 "cwd": "${workspaceFolder}/firmware"
             }
-            , "dependsOn" : [
-                "pull-svd"
-            ]
         },
         {
             "label": "flash-firmware",
@@ -40,6 +32,18 @@
             "label": "tester",
             "type": "shell",
             "command": "uv run tester"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "board",
+            "description": "board to build for",
+            "type": "pickString",
+            "options": [
+                "midge_badge_v1",
+                "midge_badge_v2"
+            ],
+            "default": "midge_badge_v1"
         }
     ]
 }

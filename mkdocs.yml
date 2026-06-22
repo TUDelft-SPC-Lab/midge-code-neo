@@ -1,16 +1,41 @@
 site_name: Documentation
 
 nav:
-  - Home: index.md
+  - Getting Started: getting_started.md
+  - General Info: general_info.md
+  - Usage: usage/data_collection.md
   - Firmware:
-      - Limitations: firmware/limitations.md
-      - Improvements: firmware/improvements.md
+      - Overview: firmware/overview.md
+      - Supported Boards:
+          - Mingle Midge V1: firmware/boards/midge_v1.md
+      - Wiring for flashing and debugging:
+          - Wiring Guide: firmware/wiring.md
+          - Probes:
+              - DAP-Link Probe: firmware/probes/daplink.md
+              - J-Link Probe: firmware/probes/jlink-edu-mini.md
+      - Workflows:
+          - Vanilla: firmware/workflows/vanilla.md
+          - VSCode: firmware/workflows/vscode.md
+          - PlatformIO: firmware/workflows/platformIO.md
+          - Common:
+              - Setup Zephyr: firmware/workflows/setup-zephyr.md
+          - Limitations: firmware/limitations.md
+  - Design:
+      - Midge Protocol: design/protocol.md
+      - Architecture diagrams: design/architecture.md
 
 theme: material
 
 markdown_extensions:
   - pymdownx.arithmatex:
       generic: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
 
 extra_javascript:
   - javascripts/mathjax.js
@@ -24,3 +49,7 @@ plugins:
         python:
           options:
             show_submodules: true
+  - plantuml:
+      puml_url: https://www.plantuml.com/plantuml
+      theme:
+        enabled: false

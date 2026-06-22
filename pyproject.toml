@@ -17,6 +17,7 @@ dev = [
   "pytest-cov>=5.0.0,<6",
   "mkdocstrings[python]>=0.26.1,<1",
   "mkdocs-material>=9.5.39,<10",
+  "mkdocs_puml>=2.3.0, <3",
   "setuptools-scm>=8.1.0,<9",
 ]
 
@@ -40,11 +41,11 @@ version-file = "_version.py"
 Homepage = "https://github.com/TUDelft-SPC-Lab/midge-code-neo"
 
 [project.scripts]
-main_script = "midge_code_neo.main:main"
 tester = "midge_code_neo.single_tester:main_sync"
 scan_parse = "midge_code_neo.scan_parse:main"
 imu_parse = "midge_code_neo.imu_parse:main"
 timesync_parse = "midge_code_neo.timesync_parse:main"
+extract_data = "midge_code_neo.extract_data:main"
 hub_cli = "midge_code_neo.hub_cli:main_sync"
 
 [tool.pytest.ini_options]

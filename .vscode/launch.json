@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "zephyr (CMSIS-DAP)",
+            "name": "OpenOCD (CMSIS-DAP)",
             "cwd": "${workspaceFolder}/firmware",
             "executable": "build/zephyr/zephyr.elf",
             "request": "launch",
@@ -15,10 +15,11 @@
                 "interface/cmsis-dap.cfg",
                 "target/nrf52.cfg"
             ],
-            "openOCDLaunchCommands": ["adapter speed 2000"],
+            "openOCDLaunchCommands": ["adapter speed 4000"],
             "interface": "swd",
-            "armToolchainPath": "",
-            "svdFile": "/tmp/nrf52832.svd",
+            "armToolchainPath": "${env:MM_ARM_TOOLCHAIN}",
+            "toolchainPrefix": "arm-zephyr-eabi",
+            "svdFile": "/tmp/chip.svd",
             "preLaunchCommands":["set remotetimeout 60"],
             "rttConfig": {
                 "enabled": true,
@@ -33,7 +34,7 @@
             }
         },
          {
-            "name": "zephyr (J-Link)",
+            "name": "J-Link",
             "cwd": "${workspaceFolder}/firmware",
             "executable": "build/zephyr/zephyr.elf",
             "request": "launch",
@@ -41,9 +42,10 @@
             "type": "cortex-debug",
             "servertype": "jlink",
             "device": "nrf52",
-            "svdFile": "/tmp/nrf52832.svd",
+            "svdFile": "/tmp/chip.svd",
             "interface": "swd",
-            "armToolchainPath": "",
+            "armToolchainPath": "${env:MM_ARM_TOOLCHAIN}",
+            "toolchainPrefix": "arm-zephyr-eabi",
             "preLaunchCommands":["set remotetimeout 60"],
             "rttConfig": {
                 "enabled": true,

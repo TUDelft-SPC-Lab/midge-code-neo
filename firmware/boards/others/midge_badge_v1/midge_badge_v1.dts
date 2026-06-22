@@ -3,8 +3,10 @@
 #include <nordic/nrf52832_qfaa.dtsi>
 #include "midge_badge_v1-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
-#include <zephyr/dt-bindings/sensor/icm20948.h>
 #define CLOSED_SOURCE_ICM20948 1
+#if CLOSED_SOURCE_ICM20948 == 0
+#include <zephyr/dt-bindings/sensor/icm20948.h>
+#endif
 /**
  * LED_IND PO.03 pin 19
  * SCL     PO.02 pin 15

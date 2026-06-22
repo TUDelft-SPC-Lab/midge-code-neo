@@ -2,6 +2,11 @@ repos:
   - repo: builtin
     hooks:
       - id: check-added-large-files
+        exclude: |
+          (?x)(
+              ^*.png|
+              ^*.jpg
+          )
       - id: check-case-conflict
       - id: check-merge-conflict
       - id: check-symlinks
