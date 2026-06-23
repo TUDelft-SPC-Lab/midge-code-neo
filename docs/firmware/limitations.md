@@ -33,7 +33,7 @@ t = \frac{4096(5)}{(16000)(2)(2)} = 320 \text{ms}
 $$
 
 If a delay to process a buffer is higher than the maximum time window that can
-be buffered, the firmware will drop the corresponding samples. The metadata file
+be buffered, the firmware will drop incoming samples. The metadata file
 for each audio capture will log the sample drops, which will be equivalent to
 $t/B$ of data.
 

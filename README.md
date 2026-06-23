@@ -17,12 +17,14 @@ Hardware Design for Mingle Midge devices is tracked in he [hardware repo](https:
 
 ## Getting Started
 
-
+Visit the [documentaton](https://tudelft-spc-lab.github.io/midge-code-neo/getting_started/)
 
 ## Repository structure
 
 ```
 .
+├── .vscode/     support for vscode workflow
+├── docs/        project documentation
 ├── docs/        project documentation
 ├── experiments/ example experiment configurations
 ├── firmware/    Embedded firmware sources

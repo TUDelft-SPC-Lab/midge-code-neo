@@ -19,7 +19,7 @@ nav:
           - PlatformIO: firmware/workflows/platformIO.md
           - Common:
               - Setup Zephyr: firmware/workflows/setup-zephyr.md
-          - Limitations: firmware/limitations.md
+      - Limitations: firmware/limitations.md
   - Design:
       - Midge Protocol: design/protocol.md
       - Architecture diagrams: design/architecture.md
