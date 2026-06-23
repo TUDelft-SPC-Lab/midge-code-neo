@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Custom script to launch vscode with the zephyr environment loaded
 #

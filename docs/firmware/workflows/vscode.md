@@ -18,7 +18,7 @@ After this, for work sessions just invoke vscode via the wrapper script:
 1. Launch VSCode:
 
     ```Shell
-    sh launch_code.sh # from midge-code-neo root
+    ./launch_code.sh # from midge-code-neo root
     ```
 
 # Just building
