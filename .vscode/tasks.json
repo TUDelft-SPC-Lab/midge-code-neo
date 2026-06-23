@@ -12,7 +12,7 @@
         {
             "label": "build-firmware",
             "type": "shell",
-            "command": "sh build.sh -b ${input:board}",
+            "command": "bash build.sh -b ${input:board}",
             "options": {
                 "cwd": "${workspaceFolder}/firmware"
             }
@@ -20,13 +20,14 @@
         {
             "label": "flash-firmware",
             "type": "shell",
-            "command": "west flash",
+            "command": "west flash --runner ${input:flashRunner}",
             "options": {
                 "cwd": "${workspaceFolder}/firmware"
             },
-            "dependsOn" : [
+            "dependsOn": [
                 "build-firmware"
-            ]
+            ],
+            "problemMatcher": []
         },
         {
             "label": "tester",
@@ -44,6 +45,16 @@
                 "midge_badge_v2"
             ],
             "default": "midge_badge_v1"
+        },
+        {
+            "id": "flashRunner",
+            "description": "runner to use for flashing",
+            "type": "pickString",
+            "options": [
+                "openocd",
+                "jlink"
+            ],
+            "default": "jlink"
         }
     ]
 }
