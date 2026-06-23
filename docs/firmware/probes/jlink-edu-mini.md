@@ -12,8 +12,13 @@ have different tradeoffs like speed, size, features, output connector, etc.
 
 While J-Link can be used with openOCD, it's better to use the official tools
 from Segger. Depending on the distro you are using, there might be a package
-available in your package manager, if not, get the installer that makes the
-most sense from [here](https://www.segger.com/downloads/jlink/).
+available in your package manager:
+
+* Ubuntu:
+  ```bash
+  sudo apt install jlink
+  ```
+* Other: get the installer from [here](https://www.segger.com/downloads/jlink/).
 
 ## Usage
 
