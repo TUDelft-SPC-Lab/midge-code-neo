@@ -86,6 +86,9 @@ class MidgeBadgeCommand(Structure):
             elif field[0] == "version_str":
                 version_str = bytes(getattr(self, field[0])).decode("utf-8")
                 ret += f"[fw_version = {version_str}]"
+            elif field[0] == "free_bytes":
+                free_bytes = int(getattr(self, field[0])) / (1024**3)
+                ret += f"[free_GB = {free_bytes:.2f}]"
             else:
                 ret += f"[{field[0]} = {getattr(self, field[0])}]"
         return ret
