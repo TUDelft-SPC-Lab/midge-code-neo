@@ -1,4 +1,8 @@
-site_name: Documentation
+site_name: midge-code-neo
+site_description: Documentation for midge-code-neo
+site_author: josfemova
+
+repo_url: https://github.com/TUDelft-SPC-Lab/midge-code-neo
 
 nav:
   - Getting Started: getting_started.md
@@ -24,32 +28,81 @@ nav:
       - Midge Protocol: design/protocol.md
       - Architecture diagrams: design/architecture.md
 
-theme: material
-
-markdown_extensions:
-  - pymdownx.arithmatex:
-      generic: true
-  - pymdownx.highlight:
-      anchor_linenums: true
-      line_spans: __span
-      pygments_lang_class: true
-  - pymdownx.inlinehilite
-  - pymdownx.snippets
-  - pymdownx.superfences
-
-extra_javascript:
-  - javascripts/mathjax.js
-  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+theme:
+  language: en
+  icon:
+    logo: fontawesome/solid/book
+    repo: fontawesome/brands/github
+  features:
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.tooltips
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.tabs
+    - navigation.top
+    - search.highlight
+  palette:  # Automatic light/dark mode: https://zensical.org/docs/setup/colors/#automatic-light-dark-mode
+    - media: (prefers-color-scheme)
+      toggle:
+        icon: lucide/sun-moon
+        name: Switch to light mode
+    - media: '(prefers-color-scheme: light)'
+      scheme: default
+      toggle:
+        icon: lucide/sun
+        name: Switch to dark mode
+    - media: '(prefers-color-scheme: dark)'
+      scheme: slate
+      toggle:
+        icon: lucide/moon
+        name: Switch to system preference
 
 plugins:
   - autorefs:
       resolve_closest: true
   - mkdocstrings:
       handlers:
-        python:
+        python:  # Based on recommended settings: https://mkdocstrings.github.io/python/usage/#recommended-settings
+          paths: [src]
+          inventories:
+            - https://docs.python.org/3/objects.inv
           options:
-            show_submodules: true
-  - plantuml:
-      puml_url: https://www.plantuml.com/plantuml
-      theme:
-        enabled: false
+            # Docstrings
+            docstring_options:
+              ignore_init_summary: true
+            docstring_section_style: list
+            # Cross referencing
+            relative_crossrefs: true
+            scoped_crossrefs: true
+            signature_crossrefs: true
+            unwrap_annotated: true
+            # Members
+            inherited_members: true
+            summary: true
+            # Headings
+            heading_level: 1
+            parameter_headings: true
+            type_parameter_headings: true
+            show_root_heading: false
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            # Signatures
+            merge_init_into_class: true
+            separate_signature: true
+            show_signature_annotations: true
+            show_signature_type_parameters: true
+            # Other
+            backlinks: tree
+            show_bases: false
+            show_inheritance_diagram: true
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js

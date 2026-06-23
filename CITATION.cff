@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+title: midge-code-neo
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+version: 0.0.1
+authors:
+  - given-names: josfemova
+    email: josfemova@gmail.com
+    affiliation: TU Delft
+repository-code: https://github.com/TUDelft-SPC-Lab/midge-code-neo
+# identifiers:
+#   - type: doi
+#     value: 10.5281/zenodo.1234 # Uncomment this and replace it with a real DOI
+#     # See this link for information on how to get the DOI
+#     # https://docs.github.com/en/repositories/archiving-a-github-repository/referencing-and-citing-content
