@@ -25,7 +25,6 @@ Visit the [documentaton](https://tudelft-spc-lab.github.io/midge-code-neo/gettin
 .
 ├── .vscode/     support for vscode workflow
 ├── docs/        project documentation
-├── docs/        project documentation
 ├── experiments/ example experiment configurations
 ├── firmware/    Embedded firmware sources
 ├── packages/    Internal python libraries
@@ -40,4 +39,4 @@ Open an issue in this repository, we'll try to answer ASAP.
 ## Licensing
 
 The code under this repository is licensed under the MIT license, with the sole
-exception of the submodule for the ICM
+exception of the submodule for the ICM-20948
