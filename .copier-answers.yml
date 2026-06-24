@@ -1,14 +1,11 @@
 # Changes here will be overwritten by Copier
-_commit: v0.4.0
+_commit: v0.7.0
 _src_path: git+https://gitlab.ewi.tudelft.nl/reit/python-package-template
 email: josfemova@gmail.com
 environment_manager: uv
 full_name: josfemova
-host: github.com
 license: No license (others may not use, share or modify the code)
 min_python_version: '3.10'
-org: TUDelft-SPC-Lab
 project_name: midge-code-neo
 project_short_description: 'New Implementation of the firmware-software solution for
     the Midge Sociometric badges '
-url: https://github.com/TUDelft-SPC-Lab/midge-code-neo

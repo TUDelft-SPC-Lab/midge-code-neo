@@ -1,271 +1,250 @@
 # Firmware
 
-```puml
-@startuml
-'left to right direction
-'Interface "midge_protocol" as ic
+```mermaid
+flowchart LR
+	subgraph midge_code_neo[Midge-code-neo]
+		spi[SPI PHY]
+		sw[Switch PHY]
+		nus[BLE NUS]
 
-Component "midge-code-neo" {
-    port "SPI PHY" as spi
-    portin "switch PHY" as sw
-    port "BLE NUS" as nus
+		subgraph imu_drivers[imu_drivers]
+			imu_interface[imu_interface]
+			subgraph icm20948[icm20948]
+				closed_drv[closed_drv]
+				zephyr_drv[zephyr_drv]
+			end
+			driver_n[driver_n]
+		end
 
-    rectangle imu_drivers{
-      rectangle imu_interface
-      rectangle icm20948 {
-        rectangle "closed_drv"
-        rectangle "zephyr_drv"
-      }
-      rectangle "driver_n"
-    }
-together {
-    rectangle sampling {
-      rectangle proximity
-      rectangle audio
-      rectangle imu
-    }
-    rectangle battery_charge
-    rectangle status_led
-    rectangle time_control
-}
-together {
-    rectangle privacy_switch
-    rectangle cmd_processing as mcp
-}
-    rectangle storage
-    rectangle "Zephyr file subsystem" as fatfs
-    nus --> mcp: req-resp logic midge_protocol
-    sw --> privacy_switch: change privacy state
-    privacy_switch <.. audio: uses
+		subgraph sampling[sampling]
+			proximity[proximity]
+			audio[audio]
+			imu[imu]
+		end
 
-    storage ..> fatfs: uses
-    spi <.. fatfs: uses
+		battery_charge[battery_charge]
+		status_led[status_led]
+		time_control[time_control]
+		privacy_switch[privacy_switch]
+		mcp[cmd_processing]
+		storage[storage]
+		fatfs[Zephyr file subsystem]
+	end
 
-    mcp ..> proximity: uses
-    mcp ..> audio: uses
-    mcp ..> imu: uses
-    mcp ..> storage: uses
-    mcp ..> battery_charge: uses
-    mcp ..> time_control: uses
+	nus -->|req-resp logic midge_protocol| mcp
+	sw -->|change privacy state| privacy_switch
+	privacy_switch -.->|uses| audio
 
-    audio ..> storage: uses
-    proximity ..> storage: uses
+	storage -.->|uses| fatfs
+	spi -.->|uses| fatfs
 
-    imu ..> imu_interface: uses
-    imu_interface <|.. closed_drv
-    imu_interface <|.. zephyr_drv
-    imu_interface <|.. driver_n
-    imu_drivers ..> storage: uses
+	mcp -.->|uses| proximity
+	mcp -.->|uses| audio
+	mcp -.->|uses| imu
+	mcp -.->|uses| storage
+	mcp -.->|uses| battery_charge
+	mcp -.->|uses| time_control
 
-    time_control ..> storage: uses
+	audio -.->|uses| storage
+	proximity -.->|uses| storage
 
-    mcp ..> status_led : uses
+	imu -.->|uses| imu_interface
+	imu_interface --> closed_drv
+	imu_interface --> zephyr_drv
+	imu_interface --> driver_n
+	imu_drivers -.->|uses| storage
 
-}
-'together{
-'  node SDMMC
-'  node "Controller central"
-'  node "Switch"
-'}
-'
-'SDMMC -- spi
-'"Controller central" -- ic
-'ic -- nus
-'"Switch" --  sw
+	time_control -.->|uses| storage
+	mcp -.->|uses| status_led
 
-@enduml
+	sdmmc[SDMMC]
+	controller_central[Controller central]
+	switch_node[Switch]
+
+	sdmmc --- spi
+	controller_central --- nus
+	switch_node --- sw
 ```
 
 # Control Software
 
 
-```puml
-@startuml
-left to right direction
+```mermaid
+classDiagram
+    direction RL
 
-package hub {
-	class MidgeBadgeHub {
-		-_experiment: ExperimentSchema
-		-_selected_badge: BadgeSchema | None
-		-_selected_group: GroupSchema | None
-		-_status_check_repeat: bool
-		-_sample_id_counter: int
-		-_battery_max_voltage_mv: int
-		+init_experiment(): list<GroupCommandExecResult>>
-		+execute_cmds(cmds: list<CommandEntry>, filter: Callable[[GroupSchema, BadgeSchema], bool] = lambda _group, _badge: True): list<GroupCommandExecResult>
-		+execute_cmd(cmd: CommandEntry, filter: Callable[[GroupSchema, BadgeSchema], bool] = lambda _group, _badge: True): list<GroupCommandExecResult>
-		+get_status(): list<GroupCommandExecResult>
-		+start_mic(): list<GroupCommandExecResult> | None
-		+stop_mic(): list<GroupCommandExecResult> | None
-		+start_imu(): list<GroupCommandExecResult> | None
-		+stop_imu(): list<GroupCommandExecResult> | None
-		+start_scan(): list<GroupCommandExecResult> | None
-		+stop_scan(): list<GroupCommandExecResult> | None
-		+start_all_sensors(): list<GroupCommandExecResult>
-		+stop_all_sensors(): list<GroupCommandExecResult>
-		+get_fw_version(): list<GroupCommandExecResult>
-		+sd_card_get_free_space(): list<GroupCommandExecResult>
-		+sd_card_erase(): list<GroupCommandExecResult>
-		+sd_card_list_files(log_list: bool): list<str>
-		+sd_card_erase_file(file_name: str): list<GroupCommandExecResult>
-		+sd_card_erase_folder(folder_name: str): list<GroupCommandExecResult>
-		+get_selected_badge(): BadgeSchema | None
-		+get_schema(): ExperimentSchema
-		+select_badge_by_name(name: str): bool
-		+select_badge_by_mac(mac: str): bool
-		+unselect_badge(): void
-	}
+    class MidgeBadgeHub {
+        -_experiment: ExperimentSchema
+        -_selected_badge: BadgeSchema | None
+        -_selected_group: GroupSchema | None
+        -_status_check_repeat: bool
+        -_sample_id_counter: int
+        -_battery_max_voltage_mv: int
+        +init_experiment() list~GroupCommandExecResult~
+        +execute_cmds(cmds, filter) list~GroupCommandExecResult~
+        +execute_cmd(cmd, filter) list~GroupCommandExecResult~
+        +get_status() list~GroupCommandExecResult~
+        +start_mic() list~GroupCommandExecResult~
+        +stop_mic() list~GroupCommandExecResult~
+        +start_imu() list~GroupCommandExecResult~
+        +stop_imu() list~GroupCommandExecResult~
+        +start_scan() list~GroupCommandExecResult~
+        +stop_scan() list~GroupCommandExecResult~
+        +start_all_sensors() list~GroupCommandExecResult~
+        +stop_all_sensors() list~GroupCommandExecResult~
+        +get_fw_version() list~GroupCommandExecResult~
+        +sd_card_get_free_space() list~GroupCommandExecResult~
+        +sd_card_erase() list~GroupCommandExecResult~
+        +sd_card_list_files(log_list) list~str~
+        +sd_card_erase_file(file_name) list~GroupCommandExecResult~
+        +sd_card_erase_folder(folder_name) list~GroupCommandExecResult~
+        +get_selected_badge() BadgeSchema
+        +get_schema() ExperimentSchema
+        +select_badge_by_name(name) bool
+        +select_badge_by_mac(mac) bool
+        +unselect_badge() void
+    }
 
-	class CommandEntry {
-		+cmd: MidgeBadgeCommand
-		+preprocess_func: Callable[[MidgeBadgeCommand], MidgeBadgeCommand]
-	}
+    class CommandEntry {
+        +cmd: MidgeBadgeCommand
+        +preprocess_func: Callable
+    }
 
-	class BadgeCmdExecResult {
-		+badge: BadgeSchema
-		+responses: list<MidgeBadgeCommand>
-	}
+    class BadgeCmdExecResult {
+        +badge: BadgeSchema
+        +responses: list~MidgeBadgeCommand~
+    }
 
-	class GroupCommandExecResult {
-		+group: GroupSchema
-		+badge_results: list<BadgeCmdExecResult>
-	}
-}
+    class GroupCommandExecResult {
+        +group: GroupSchema
+        +badge_results: list~BadgeCmdExecResult~
+    }
 
-package connection {
-	enum NotifyState {
-		READ_SOT = 0
-		READ_CMD = 1
-		READ_DATA = 2
-		READ_EOT = 3
-	}
+    class NotifyState {
+        <<enumeration>>
+        READ_SOT
+        READ_CMD
+        READ_DATA
+        READ_EOT
+    }
 
-	class MidgeBadgeClient {
-		-__address: str | None
-		-__device: BLEDevice | None
-		-__connected: bool
-		-__request_queue: MidgeBadgeQueue | None
-		-__response_queue: MidgeBadgeQueue | None
-		-__reserved_macs: list<str>
-		-__tx_notify_state: NotifyState
-		-__tx_notify_buffer: bytearray
-		-__response_buffer: bytearray
-		-__response_buffer_len: int
-		-__response_buffer_idx: int
-		-__loop: asyncio.AbstractEventLoop
-		-__cmd: MidgeBadgeCommand | None
-		+get_address(): str
-		+get_connected(): bool
-		+start(): Future<void>
-		+stop(): void
-		+send_command(request: MidgeBadgeCommand): void
-		+get_response(timeout: int = 120): MidgeBadgeCommand
-		+execute_command_log_resp(request: MidgeBadgeCommand): void
-		+list_files(log_list: bool = False): list<str>
-		+download_file(path: str, outfile: str): void
-	}
+    class MidgeBadgeClient {
+        -__address: str | None
+        -__device: BLEDevice | None
+        -__connected: bool
+        -__request_queue: MidgeBadgeQueue | None
+        -__response_queue: MidgeBadgeQueue | None
+        -__reserved_macs: list
+        -__tx_notify_state: NotifyState
+        -__tx_notify_buffer: bytearray
+        -__response_buffer: bytearray
+        -__response_buffer_len: int
+        -__response_buffer_idx: int
+        -__loop: asyncio.AbstractEventLoop
+        -__cmd: MidgeBadgeCommand | None
+        +get_address() str
+        +get_connected() bool
+        +start() Future~void~
+        +stop() void
+        +send_command(request) void
+        +get_response(timeout) MidgeBadgeCommand
+        +execute_command_log_resp(request) void
+        +list_files(log_list) list~str~
+        +download_file(path, outfile) void
+    }
 
-	class MidgeBadgeQueue {
-		+async_loop: asyncio.AbstractEventLoop
-		+put_sync(item: object)
-		+get_sync(timeout: int = 120)
-	}
-}
+    class MidgeBadgeQueue {
+        +async_loop: asyncio.AbstractEventLoop
+        +put_sync(item) void
+        +get_sync(timeout) object
+    }
 
-package protocol {
-	abstract class MidgeBadgeCommand {
-		+id(): int
-	}
+    class MidgeBadgeCommand {
+        <<abstract>>
+        +id() int
+    }
 
-	class CmdExampleRequest
-	class CmdExampleResponse
-	class FileFormatExample1
-	class FileFormatExample2
-}
+    class CmdExampleRequest
+    class CmdExampleResponse
+    class FileFormatExample1
+    class FileFormatExample2
 
-package schema {
-	class ExperimentSchema {
-		+id: int
-		+name: str
-		+description: str
-		+params: ExperimentParamsSchema
-		+groups: list<GroupSchema>
-        +{static} load_from_yaml(yaml_path: str): ExperimentSchema
-	}
+    class ExperimentSchema {
+        +id: int
+        +name: str
+        +description: str
+        +params: ExperimentParamsSchema
+        +groups: list~GroupSchema~
+        +load_from_yaml(yaml_path)$ ExperimentSchema
+    }
 
-	class ExperimentParamsSchema {
-		+audio: AudioParamsSchema | None
-		+imu: ImuParamsSchema | None
-		+scan: ScanParamsSchema | None
-	}
+    class ExperimentParamsSchema {
+        +audio: AudioParamsSchema | None
+        +imu: ImuParamsSchema | None
+        +scan: ScanParamsSchema | None
+    }
 
-	class AudioParamsSchema {
-		+high_freq_hz: int
-		+low_freq_decimation: int
-		+channels: int
-	}
+    class AudioParamsSchema {
+        +high_freq_hz: int
+        +low_freq_decimation: int
+        +channels: int
+    }
 
-	class ImuParamsSchema {
-		+accel_range_g: int
-		+gyro_range_dps: int
-		+sample_rate_hz: int
-	}
+    class ImuParamsSchema {
+        +accel_range_g: int
+        +gyro_range_dps: int
+        +sample_rate_hz: int
+    }
 
-	class ScanParamsSchema {
-		+interval: int
-		+window: int
-	}
+    class ScanParamsSchema {
+        +interval: int
+        +window: int
+    }
 
-	class GroupSchema {
-		+id: int
-		+name: str
-		+description: str
-		+badges: list<BadgeSchema>
-	}
+    class GroupSchema {
+        +id: int
+        +name: str
+        +description: str
+        +badges: list~BadgeSchema~
+    }
 
-	class BadgeSchema {
-		+id: int
-		+mac: str
-		+name: str | None
-	}
-}
+    class BadgeSchema {
+        +id: int
+        +mac: str
+        +name: str | None
+    }
 
-class "ctypes.Structure" as ctypesStructure
-class "asyncio.Queue" as asyncioQueue
-class BleakClient
+    class CtypesStructure
+    class AsyncioQueue
+    class BleakClient
 
-ctypesStructure <|-- MidgeBadgeCommand
-asyncioQueue <|-- MidgeBadgeQueue
-FileFormatExample1 --|> ctypesStructure
-FileFormatExample2 --|> ctypesStructure
-MidgeBadgeCommand <|-- CmdExampleRequest
-MidgeBadgeCommand <|-- CmdExampleResponse
+    CtypesStructure <|-- MidgeBadgeCommand
+    AsyncioQueue <|-- MidgeBadgeQueue
+    FileFormatExample1 --|> CtypesStructure
+    FileFormatExample2 --|> CtypesStructure
+    MidgeBadgeCommand <|-- CmdExampleRequest
+    MidgeBadgeCommand <|-- CmdExampleResponse
 
-MidgeBadgeClient o-- NotifyState : uses
-MidgeBadgeClient o-- MidgeBadgeQueue : uses
-MidgeBadgeClient -- BleakClient : wraps
+    MidgeBadgeClient o-- NotifyState : uses
+    MidgeBadgeClient o-- MidgeBadgeQueue : uses
+    MidgeBadgeClient -- BleakClient : wraps
 
-CommandEntry --> MidgeBadgeCommand
-BadgeCmdExecResult o-- BadgeSchema
-BadgeCmdExecResult o-- MidgeBadgeCommand
-GroupCommandExecResult o-- GroupSchema
-GroupCommandExecResult o-- BadgeCmdExecResult
+    CommandEntry --> MidgeBadgeCommand
+    BadgeCmdExecResult o-- BadgeSchema
+    BadgeCmdExecResult o-- MidgeBadgeCommand
+    GroupCommandExecResult o-- GroupSchema
+    GroupCommandExecResult o-- BadgeCmdExecResult
 
-ExperimentSchema o-- ExperimentParamsSchema
-ExperimentParamsSchema o-- AudioParamsSchema
-ExperimentParamsSchema o-- ImuParamsSchema
-ExperimentParamsSchema o-- ScanParamsSchema
-ExperimentSchema o-- GroupSchema
-GroupSchema o-- BadgeSchema
+    ExperimentSchema o-- ExperimentParamsSchema
+    ExperimentParamsSchema o-- AudioParamsSchema
+    ExperimentParamsSchema o-- ImuParamsSchema
+    ExperimentParamsSchema o-- ScanParamsSchema
+    ExperimentSchema o-- GroupSchema
+    GroupSchema o-- BadgeSchema
 
-MidgeBadgeHub --> ExperimentSchema : uses
-MidgeBadgeHub --> MidgeBadgeClient : controls
-MidgeBadgeHub --> CommandEntry : processes
+    MidgeBadgeHub --> ExperimentSchema : uses
+    MidgeBadgeHub --> MidgeBadgeClient : controls
+    MidgeBadgeHub --> CommandEntry : processes
 
-note right of MidgeBadgeCommand
-	Implementor clases omitted, CmdExampleRequest & CmdExampleResponse are
-  placeholders.
-end note
-
-@enduml
+    note for MidgeBadgeCommand "Implementor classes omitted,\nCmdExampleRequest & CmdExampleResponse\nare placeholders."
 ```

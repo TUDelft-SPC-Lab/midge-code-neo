@@ -4,8 +4,46 @@
 
 Follow the official
 [Getting Started](https://docs.zephyrproject.org/latest/develop/getting_started/index.html)
-guide but omit what comes after building the blinky example. Follow these build
-steps just to make sure your setup is correct:
+guide but omit what comes after building the blinky example.
+And modify the setup as follows.
+
+* Use the default `~/zephyrproject/.venv` when following the instructions.
+* In the `~/zephyrproject/zephyr/west.yml` set the projects to only what is needed for the midge **before running `west update`**:
+    ```yaml
+      projects:
+        - name: cmsis_6
+          repo-path: CMSIS_6
+          revision: b2dfbe1a20bbd49c2d2c605073799671074bbb30
+          path: modules/hal/cmsis_6
+          groups:
+            - hal
+        - name: fatfs
+          revision: f4ead3bf4a6dab3a07d7b5f5315795c073db568d
+          path: modules/fs/fatfs
+          groups:
+            - fs
+        - name: hal_nordic
+          revision: 18da0cc9726f8759c627dba3180b3ba9294e433c
+          path: modules/hal/nordic
+          groups:
+            - hal
+        - name: mcuboot
+          revision: 0fae8920c4e5acb792b3fe766c89c668f42be6ee
+          path: bootloader/mcuboot
+          groups:
+            - bootloader
+        - name: segger
+          revision: 50892fdbcf2f570e67baa72b8894a66b16946f72
+          path: modules/debug/segger
+          groups:
+            - debug
+    ```
+* On the sdk install only pull the necessary one for the midge
+    ```bash
+    west sdk install -t arm-zephyr-eabi
+    ```
+
+Follow these build steps just to make sure your setup is correct:
 
 ```Shell
 cd ~/zephyrproject/zephyr
