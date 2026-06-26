@@ -42,6 +42,15 @@ take place, affecting the performance of audio capture. Slow SD cards can
 take around 800ms in the worst case, which leads to sample drops due to
 resource starvation.
 
+| Platform        | Buffer Count | Frequency     | Channels | Sample Size | Buffered Time |
+|-----------------|:------------:|--------------:|:--------:|:-----------:|--------------:|
+| Mingle Midge v1 | 5            | 15.625 kHz    | 1        | 2 bytes     | 655 ms        |
+| Mingle Midge v1 | 5            | 16.667 kHz    | 1        | 2 bytes     | 614 ms        |
+| Mingle Midge v1 | 5            | 20.000 kHz    | 1        | 2 bytes     | 512 ms        |
+| Mingle Midge v1 | 5            | 15.625 kHz    | 2        | 2 bytes     | 328 ms        |
+| Mingle Midge v1 | 5            | 16.667 kHz    | 2        | 2 bytes     | 307 ms        |
+| Mingle Midge v1 | 5            | 20.000 kHz    | 2        | 2 bytes     | 256 ms        |
+
 ### Audio File Size
 
 Sample File size: at 20KHz audio, stereo:
