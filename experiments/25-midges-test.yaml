@@ -1,0 +1,109 @@
+id: 3
+name: testlab
+description: Test of simultaneous Mingle Midges
+
+params:
+  audio:
+    high_freq_hz: 20000
+    low_freq_decimation: 16
+    channels: 1
+  imu:
+    accel_range_g: 4
+    gyro_range_dps: 1000
+    sample_rate_hz: 50
+  scan:
+    interval: 16
+    window: 16
+
+groups:
+  - id: 0
+    name: Group
+    description: Successfully connected midges
+    badges:
+      - id: 65
+        mac: EA:69:13:2A:8E:EC
+        name: midge_65
+
+      - id: 66
+        mac: C5:AE:C8:68:B3:6C
+        name: midge_66
+
+      - id: 67
+        mac: E3:AF:2F:25:C9:CA
+        name: midge_67
+
+      - id: 68
+        mac: D8:88:A5:9A:41:F7
+        name: midge_68
+
+      - id: 70
+        mac: E8:99:E0:18:53:67
+        name: midge_70
+
+      - id: 71
+        mac: C9:55:9C:7F:EB:85
+        name: midge_71
+
+      - id: 74
+        mac: E7:0A:B9:89:83:0B
+        name: midge_74
+
+      - id: 76
+        mac: F9:A4:3B:A1:AC:4E
+        name: midge_76
+
+      - id: 79
+        mac: E3:B8:72:C2:4C:96
+        name: midge_79
+
+      - id: 84
+        mac: CD:C4:4F:20:ED:34
+        name: midge_84
+
+      - id: 85
+        mac: D6:4B:1C:08:8A:3B
+        name: midge_85
+
+      - id: 86
+        mac: CE:BC:6D:D4:AD:0F
+        name: midge_86
+
+      - id: 87
+        mac: E3:27:1E:81:D1:D0
+        name: midge_87
+
+      - id: 88
+        mac: F2:26:80:6B:0C:54
+        name: midge_88
+
+      - id: 89
+        mac: C3:B4:11:F7:21:3C
+        name: midge_89
+
+      - id: 90
+        mac: CB:5D:74:C0:C2:47
+        name: midge_90
+
+      - id: 91
+        mac: FE:0F:4C:8B:4C:E6
+        name: midge_91
+
+      - id: 92
+        mac: CC:31:9E:0B:9A:A5
+        name: midge_92
+
+      - id: 94
+        mac: CA:1B:3E:55:16:64
+        name: midge_94
+
+      - id: 95
+        mac: EE:FC:64:AD:BB:AC
+        name: midge_95
+
+      - id: 97
+        mac: C2:8B:C3:40:9C:78
+        name: midge_97
+
+      - id: 98
+        mac: EA:25:0F:24:10:7B
+        name: midge_98
