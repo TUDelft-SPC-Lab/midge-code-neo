@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from ctypes import Structure, Union, c_int16, c_int32, c_int64, c_uint8, c_uint16, c_uint32, c_uint64
 from enum import IntEnum
+from typing import TYPE_CHECKING, Any
 
 # analogue of midge_protocol.h
 
@@ -15,7 +16,7 @@ class SensorState(IntEnum):
     STOP = 2
     ERR = 3
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.name}:{self.value}"
 
 
@@ -39,7 +40,7 @@ class MidgeBadgeCommandID(IntEnum):
     CMD_ID_DOWNLOAD_FILE_CHUNK = ord("O")
 
 
-def mingle_midge_batt_mv_to_percent(mv):
+def mingle_midge_batt_mv_to_percent(mv: int) -> int:
     # fmt: off
     v_percentage_vector = [
         0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4,
@@ -61,7 +62,7 @@ def mingle_midge_batt_mv_to_percent(mv):
     return v_percentage_vector[vector_index]
 
 
-def get_bitfield_width(struct_cls, name):
+def get_bitfield_width(struct_cls: type[Structure], name: str) -> int | None:
     for fname, _, *rest in struct_cls._fields_:
         if fname == name:
             # rest will contain the width if it s a bit-field
@@ -74,7 +75,7 @@ class MidgeBadgeCommand(Structure):
     def id() -> int:
         pass
 
-    def __str__(self):
+    def __str__(self) -> str:
         ret = f"{self.__class__.__name__} : "
         for field in self._fields_:
             if field[0] == "battery_millivolts":
@@ -95,12 +96,16 @@ class MidgeBadgeCommand(Structure):
 
 
 class BadgeID(Structure):
+    if TYPE_CHECKING:
+        group: c_uint16
+        badge: c_uint16
+
     _fields_ = [
         ("group", c_uint16, 4),  # 4-bit field
         ("badge", c_uint16, 12),  # 12-bit field
     ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         ret = f"{self.__class__.__name__} : "
         for field in self._fields_:
             ret += f"[{field[0]} = {getattr(self, field[0])}]"
@@ -108,12 +113,16 @@ class BadgeID(Structure):
 
 
 class BadgeAssignment(Union):
+    if TYPE_CHECKING:
+        id: BadgeID
+        u16_all: c_uint16
+
     _fields_ = [
         ("id", BadgeID),
         ("u16_all", c_uint16),
     ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         ret = f"{self.__class__.__name__} : "
         for field in self._fields_:
             ret += f"[{field[0]} = {getattr(self, field[0])}]"
@@ -121,6 +130,11 @@ class BadgeAssignment(Union):
 
 
 class CustomAdvertisementData(Structure):
+    if TYPE_CHECKING:
+        battery_mv: c_uint16
+        active_sensor_bitflags: c_uint16
+        badge_assignment: BadgeAssignment
+
     _pack_ = 1
     _fields_ = [
         ("battery_mv", c_uint16),
@@ -128,7 +142,7 @@ class CustomAdvertisementData(Structure):
         ("badge_assignment", BadgeAssignment),
     ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         ret = f"{self.__class__.__name__} : "
         for field in self._fields_:
             ret += f"[{field[0]} = {getattr(self, field[0])}]"
@@ -136,6 +150,9 @@ class CustomAdvertisementData(Structure):
 
 
 class CmdResetRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        reserved: c_uint16
+
     _pack_ = 1
     _fields_ = [("reserved", c_uint16)]
 
@@ -144,6 +161,9 @@ class CmdResetRequest(MidgeBadgeCommand):
 
 
 class CmdResetResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        status_code: c_int32
+
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
@@ -152,6 +172,9 @@ class CmdResetResponse(MidgeBadgeCommand):
 
 
 class CmdIdentifyRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        reserved: c_uint16
+
     _pack_ = 1
     _fields_ = [("reserved", c_uint16)]
 
@@ -160,6 +183,9 @@ class CmdIdentifyRequest(MidgeBadgeCommand):
 
 
 class CmdIdentifyResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        status_code: c_int32
+
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
@@ -168,6 +194,10 @@ class CmdIdentifyResponse(MidgeBadgeCommand):
 
 
 class CmdSetupExperimentRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        badge_assignment: BadgeAssignment
+        experiment_id: c_uint16
+
     _pack_ = 1
     _fields_ = [
         ("badge_assignment", BadgeAssignment),
@@ -179,6 +209,9 @@ class CmdSetupExperimentRequest(MidgeBadgeCommand):
 
 
 class CmdSetupExperimentResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        status_code: c_int32
+
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
@@ -187,6 +220,9 @@ class CmdSetupExperimentResponse(MidgeBadgeCommand):
 
 
 class CmdStatusRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        millis_since_epoch: c_uint64
+
     _pack_ = 1
     _fields_ = [("millis_since_epoch", c_uint64)]
 
@@ -195,6 +231,16 @@ class CmdStatusRequest(MidgeBadgeCommand):
 
 
 class CmdStatusResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        sync_status: c_uint8
+        storage_status: c_uint8
+        audio_state: c_uint8
+        proximity_state: c_uint8
+        imu_state: c_uint8
+        battery_millivolts: c_int16
+        badge_assignment: BadgeAssignment
+        sync_error_ms: c_int64
+
     _pack_ = 1
     _fields_ = [
         ("sync_status", c_uint8),
@@ -212,6 +258,9 @@ class CmdStatusResponse(MidgeBadgeCommand):
 
 
 class CmdGetFWVersionRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        reserved: c_uint16
+
     _pack_ = 1
     _fields_ = [("reserved", c_uint16)]
 
@@ -220,6 +269,9 @@ class CmdGetFWVersionRequest(MidgeBadgeCommand):
 
 
 class CmdGetFWVersionResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        version_str: Any
+
     _pack_ = 1
     _fields_ = [("version_str", c_uint8 * 32)]
 
@@ -228,6 +280,12 @@ class CmdGetFWVersionResponse(MidgeBadgeCommand):
 
 
 class CmdStartMicRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        sample_id: c_uint16
+        high_sample_rate: c_uint16
+        low_sample_rate_decimation: c_uint8
+        mode: c_uint8
+
     _pack_ = 1
     _fields_ = [
         ("sample_id", c_uint16),
@@ -241,6 +299,9 @@ class CmdStartMicRequest(MidgeBadgeCommand):
 
 
 class CmdStartMicResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        status_code: c_int32
+
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
@@ -249,6 +310,9 @@ class CmdStartMicResponse(MidgeBadgeCommand):
 
 
 class CmdStopMicRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        reserved: c_uint16
+
     _pack_ = 1
     _fields_ = [("reserved", c_uint16)]
 
@@ -257,6 +321,9 @@ class CmdStopMicRequest(MidgeBadgeCommand):
 
 
 class CmdStopMicResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        reserved: c_int32
+
     _pack_ = 1
     _fields_ = [("reserved", c_int32)]
 
@@ -265,6 +332,12 @@ class CmdStopMicResponse(MidgeBadgeCommand):
 
 
 class CmdStartScanRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        sample_id: c_uint16
+        window: c_uint16
+        interval: c_uint16
+        reserved: c_uint16
+
     _pack_ = 1
     _fields_ = [("sample_id", c_uint16), ("window", c_uint16), ("interval", c_uint16), ("reserved", c_uint16)]
 
@@ -273,6 +346,9 @@ class CmdStartScanRequest(MidgeBadgeCommand):
 
 
 class CmdStartScanResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        status_code: c_int32
+
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
@@ -281,6 +357,9 @@ class CmdStartScanResponse(MidgeBadgeCommand):
 
 
 class CmdStopScanRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        reserved: c_uint16
+
     _pack_ = 1
     _fields_ = [("reserved", c_uint16)]
 
@@ -289,6 +368,9 @@ class CmdStopScanRequest(MidgeBadgeCommand):
 
 
 class CmdStopScanResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        status_code: c_int32
+
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
@@ -297,6 +379,12 @@ class CmdStopScanResponse(MidgeBadgeCommand):
 
 
 class CmdStartIMURequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        sample_id: c_uint16
+        acc_fsr: c_uint16
+        gyr_fsr: c_uint16
+        datarate: c_uint16
+
     _pack_ = 1
     _fields_ = [
         ("sample_id", c_uint16),
@@ -310,6 +398,9 @@ class CmdStartIMURequest(MidgeBadgeCommand):
 
 
 class CmdStartIMUResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        status_code: c_int32
+
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
@@ -318,6 +409,9 @@ class CmdStartIMUResponse(MidgeBadgeCommand):
 
 
 class CmdStopIMURequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        reserved: c_uint16
+
     _pack_ = 1
     _fields_ = [("reserved", c_uint16)]
 
@@ -326,6 +420,9 @@ class CmdStopIMURequest(MidgeBadgeCommand):
 
 
 class CmdStopIMUResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        status_code: c_int32
+
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
@@ -334,6 +431,9 @@ class CmdStopIMUResponse(MidgeBadgeCommand):
 
 
 class CmdEraseSDRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        reserved: c_uint16
+
     _pack_ = 1
     _fields_ = [("reserved", c_uint16)]
 
@@ -342,6 +442,9 @@ class CmdEraseSDRequest(MidgeBadgeCommand):
 
 
 class CmdEraseSDResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        status_code: c_int32
+
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
@@ -350,6 +453,9 @@ class CmdEraseSDResponse(MidgeBadgeCommand):
 
 
 class CmdEraseFileRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        path: Any
+
     _pack_ = 1
     _fields_ = [("path", c_uint8 * INTERFACE_MAX_FILE_NAME)]
 
@@ -358,6 +464,9 @@ class CmdEraseFileRequest(MidgeBadgeCommand):
 
 
 class CmdEraseFileResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        status_code: c_int32
+
     _pack_ = 1
     _fields_ = [("status_code", c_int32)]
 
@@ -366,6 +475,9 @@ class CmdEraseFileResponse(MidgeBadgeCommand):
 
 
 class CmdGetFreeSDSpaceRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        reserved: c_uint16
+
     _pack_ = 1
     _fields_ = [("reserved", c_uint16)]
 
@@ -374,6 +486,9 @@ class CmdGetFreeSDSpaceRequest(MidgeBadgeCommand):
 
 
 class CmdGetFreeSDSpaceResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        free_bytes: c_uint32
+
     _pack_ = 1
     _fields_ = [("free_bytes", c_uint32)]
 
@@ -382,6 +497,9 @@ class CmdGetFreeSDSpaceResponse(MidgeBadgeCommand):
 
 
 class CmdGetFileIndexInfoRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        index: c_int16
+
     _pack_ = 1
     _fields_ = [("index", c_int16)]
 
@@ -390,6 +508,11 @@ class CmdGetFileIndexInfoRequest(MidgeBadgeCommand):
 
 
 class CmdGetFileIndexInfoResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        size_bytes: c_uint32
+        index: c_int16
+        path: Any
+
     _pack_ = 1
     _fields_ = [
         ("size_bytes", c_uint32),
@@ -402,6 +525,9 @@ class CmdGetFileIndexInfoResponse(MidgeBadgeCommand):
 
 
 class CmdGetFileCRC32Request(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        path: Any
+
     _pack_ = 1
     _fields_ = [("path", c_uint8 * INTERFACE_MAX_FILE_NAME)]
 
@@ -410,6 +536,10 @@ class CmdGetFileCRC32Request(MidgeBadgeCommand):
 
 
 class CmdGetFileCRC32Response(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        crc32: c_uint32
+        status_code: c_int32
+
     _pack_ = 1
     _fields_ = [("crc32", c_uint32), ("status_code", c_int32)]
 
@@ -418,6 +548,10 @@ class CmdGetFileCRC32Response(MidgeBadgeCommand):
 
 
 class CmdDownloadFileChunkRequest(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        path: Any
+        offset: c_uint32
+
     _pack_ = 1
     _fields_ = [
         ("path", c_uint8 * INTERFACE_MAX_FILE_NAME),
@@ -429,6 +563,10 @@ class CmdDownloadFileChunkRequest(MidgeBadgeCommand):
 
 
 class CmdDownloadFileChunkResponse(MidgeBadgeCommand):
+    if TYPE_CHECKING:
+        data: Any
+        bytes: c_int16
+
     _pack_ = 1
     _fields_ = [
         ("data", c_uint8 * (INTERFACE_CMD_DATA_SZ - 4)),
