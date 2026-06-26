@@ -42,14 +42,18 @@ take place, affecting the performance of audio capture. Slow SD cards can
 take around 800ms in the worst case, which leads to sample drops due to
 resource starvation.
 
-| Platform        | Buffer Count | Frequency     | Channels | Sample Size | Buffered Time |
-|-----------------|:------------:|--------------:|:--------:|:-----------:|--------------:|
-| Mingle Midge v1 | 5            | 15.625 kHz    | 1        | 2 bytes     | 655 ms        |
-| Mingle Midge v1 | 5            | 16.667 kHz    | 1        | 2 bytes     | 614 ms        |
-| Mingle Midge v1 | 5            | 20.000 kHz    | 1        | 2 bytes     | 512 ms        |
-| Mingle Midge v1 | 5            | 15.625 kHz    | 2        | 2 bytes     | 328 ms        |
-| Mingle Midge v1 | 5            | 16.667 kHz    | 2        | 2 bytes     | 307 ms        |
-| Mingle Midge v1 | 5            | 20.000 kHz    | 2        | 2 bytes     | 256 ms        |
+For easy reference, below is a table with several values for sampling frequency and number of channels.
+The Mingle Midge v2 can have up to 50 buffers, as it has more RAM than the its v1 counterpart.
+
+| Platform        | Buffer Count | Frequency     | Channels  | Sample Size | Buffered Time |
+|-----------------|:------------:|---------------|:----------|:-----------:|--------------:|
+| Mingle Midge v2 | 50           | 20.000 kHz    | 2 (Stereo)| 2 bytes     | 2560 ms       |
+| Mingle Midge v1 | 5            | 15.625 kHz    | 1 (Mono)  | 2 bytes     | 655 ms        |
+| Mingle Midge v1 | 5            | 16.667 kHz    | 1 (Mono)  | 2 bytes     | 614 ms        |
+| Mingle Midge v1 | 5            | 20.000 kHz    | 1 (Mono)  | 2 bytes     | 512 ms        |
+| Mingle Midge v1 | 5            | 15.625 kHz    | 2 (Stereo)| 2 bytes     | 328 ms        |
+| Mingle Midge v1 | 5            | 16.667 kHz    | 2 (Stereo)| 2 bytes     | 307 ms        |
+| Mingle Midge v1 | 5            | 20.000 kHz    | 2 (Stereo)| 2 bytes     | 256 ms        |
 
 ### Audio File Size
 
