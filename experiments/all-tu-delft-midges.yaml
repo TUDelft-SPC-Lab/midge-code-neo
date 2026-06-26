@@ -1,0 +1,223 @@
+id: 1
+name: test_32
+description: Test of simultaneous Mingle Midges
+
+params:
+  audio:
+    high_freq_hz: 20000
+    low_freq_decimation: 16  # 20kHz / 16 = 1.25kHz effective sample rate
+    channels: 1
+  imu:
+    accel_range_g: 4
+    gyro_range_dps: 1000
+    sample_rate_hz: 50
+  scan:
+    interval: 16  # N * 0.625 ms
+    window: 16  # N * 0.625 ms
+
+groups:
+  - id: 0
+    name: group_0
+    description: All midges
+    badges:
+      - id: 3
+        mac: E5:93:96:CA:EE:C4
+        name: midge_3
+      - id: 4
+        mac: F9:39:24:A9:04:F1
+        name: midge_4
+      - id: 7
+        mac: FB:F5:D5:84:A1:68
+        name: midge_7
+      - id: 12
+        mac: FA:24:BD:55:C7:AB
+        name: midge_12
+      - id: 13
+        mac: D6:12:78:32:80:19
+        name: midge_13
+      - id: 14
+        mac: DB:03:30:A6:EE:86
+        name: midge_14
+      - id: 15
+        mac: D9:98:8A:68:F0:89
+        name: midge_15
+      - id: 19
+        mac: D9:0D:2E:B7:CC:6B
+        name: midge_19
+      - id: 20
+        mac: D8:AE:5B:AA:55:AE
+        name: midge_20
+      - id: 23
+        mac: E6:CC:57:A3:6B:57
+        name: midge_23
+      - id: 24
+        mac: C1:A4:56:BE:7F:7E
+        name: midge_24
+      - id: 25
+        mac: F2:26:6C:F5:CA:E5
+        name: midge_25
+      - id: 26
+        mac: CB:14:EB:9A:5C:A3
+        name: midge_26
+      - id: 28
+        mac: FC:3F:62:28:17:B4
+        name: midge_28
+      - id: 29
+        mac: CE:22:14:DE:40:38
+        name: midge_29
+      - id: 30
+        mac: E3:5D:06:9A:55:0F
+        name: midge_30
+      - id: 32
+        mac: D2:4F:7C:01:93:0E
+        name: midge_32
+      - id: 33
+        mac: DA:03:10:BB:61:F5
+        name: midge_33
+      - id: 34
+        mac: F5:E7:4D:77:4E:74
+        name: midge_34
+      - id: 35
+        mac: FD:F3:EB:4B:D0:8C
+        name: midge_35
+      - id: 37
+        mac: C5:61:A9:E9:83:EF
+        name: midge_37
+      - id: 39
+        mac: E7:03:DB:E9:16:3B
+        name: midge_39
+      - id: 42
+        mac: F6:01:AD:D1:18:23
+        name: midge_42
+      - id: 48
+        mac: F7:5A:78:FD:21:46
+        name: midge_48
+      - id: 49
+        mac: E9:59:12:26:A7:63
+        name: midge_49
+      - id: 51
+        mac: D7:2F:C7:06:93:01
+        name: midge_51
+      - id: 54
+        mac: CB:58:7B:77:44:D6
+        name: midge_54
+      - id: 55
+        mac: FE:63:F0:A4:C8:F4
+        name: midge_55
+      - id: 56
+        mac: D4:04:BF:C1:31:5D
+        name: midge_56
+      - id: 58
+        mac: D1:0E:45:AC:97:DD
+        name: midge_58
+      - id: 59
+        mac: DD:09:38:B5:ED:8C
+        name: midge_59
+      - id: 60
+        mac: E4:9C:CC:8C:8F:DA
+        name: midge_60
+      - id: 64
+        mac: F7:3A:D8:BC:FD:6C
+        name: midge_64
+      - id: 65
+        mac: EA:69:13:2A:8E:EC
+        name: midge_65
+      - id: 66
+        mac: C5:AE:C8:68:B3:6C
+        name: midge_66
+      - id: 67
+        mac: E3:AF:2F:25:C9:CA
+        name: midge_67
+      - id: 68
+        mac: D8:88:A5:9A:41:F7
+        name: midge_68
+      - id: 69
+        mac: D0:38:C6:99:53:8E
+        name: midge_69
+      - id: 70
+        mac: E8:99:E0:18:53:67
+        name: midge_70
+      - id: 71
+        mac: C9:55:9C:7F:EB:85
+        name: midge_71
+      - id: 72
+        mac: C4:66:93:DC:14:C6
+        name: midge_72
+      - id: 73
+        mac: DB:DC:6C:65:23:F7
+        name: midge_73
+      - id: 74
+        mac: E7:0A:B9:89:83:0B
+        name: midge_74
+      - id: 75
+        mac: FB:7D:B4:06:D5:AE
+        name: midge_75
+      - id: 76
+        mac: F9:A4:3B:A1:AC:4E
+        name: midge_76
+      - id: 77
+        mac: F5:98:10:28:33:8D
+        name: midge_77
+      - id: 78
+        mac: C5:65:0B:E3:73:3F
+        name: midge_78
+      - id: 79
+        mac: E3:B8:72:C2:4C:96
+        name: midge_79
+      - id: 80
+        mac: EA:27:22:9B:36:B5
+        name: midge_80
+      - id: 81
+        mac: F1:5B:FE:11:16:CC
+        name: midge_81
+      - id: 82
+        mac: DD:75:33:4C:24:B4
+        name: midge_82
+      - id: 83
+        mac: CC:CA:55:E7:B8:85
+        name: midge_83
+      - id: 84
+        mac: CD:C4:4F:20:ED:34
+        name: midge_84
+      - id: 85
+        mac: D6:4B:1C:08:8A:3B
+        name: midge_85
+      - id: 86
+        mac: CE:BC:6D:D4:AD:0F
+        name: midge_86
+      - id: 87
+        mac: E3:27:1E:81:D1:D0
+        name: midge_87
+      - id: 88
+        mac: F2:26:80:6B:0C:54
+        name: midge_88
+      - id: 89
+        mac: C3:B4:11:F7:21:3C
+        name: midge_89
+      - id: 90
+        mac: CB:5D:74:C0:C2:47
+        name: midge_90
+      - id: 91
+        mac: FE:0F:4C:8B:4C:E6
+        name: midge_91
+      - id: 92
+        mac: CC:31:9E:0B:9A:A5
+        name: midge_92
+      - id: 93
+        mac: FE:71:DB:20:4F:34
+        name: midge_93
+      - id: 94
+        mac: CA:1B:3E:55:16:64
+        name: midge_94
+      - id: 95
+        mac: EE:FC:64:AD:BB:AC
+        name: midge_95
+      - id: 96
+        mac: FD:2A:AC:0F:E9:8E
+        name: midge_96
+      - id: 97
+        mac: C2:8B:C3:40:9C:78
+        name: midge_97
+      - id: 98
+        mac: EA:25:0F:24:10:7B
+        name: midge_98
