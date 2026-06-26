@@ -25,12 +25,12 @@ repos:
         args: ["--pytest-test-first"]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.13
+    rev: v0.15.20
     hooks:
       # first, lint + autofix
-      - id: ruff
+      - id: ruff-check
         types_or: [python, pyi, jupyter]
-        args: [--show-fixes]
+        args: [--fix, --show-fixes]
       # then, format
       - id: ruff-format
 
