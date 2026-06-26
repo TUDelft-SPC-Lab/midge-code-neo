@@ -13,7 +13,7 @@ For now, this solution supports the following platforms:
 
 ## Hardware Design
 
-Hardware Design for Mingle Midge devices is tracked in he [hardware repo](https://github.com/TUDelft-SPC-Lab/spcl_midge_hardware)
+Hardware Design for Mingle Midge devices is tracked in the [hardware repo](https://github.com/TUDelft-SPC-Lab/spcl_midge_hardware)
 
 ## Getting Started
 
