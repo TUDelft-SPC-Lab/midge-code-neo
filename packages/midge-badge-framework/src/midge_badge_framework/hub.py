@@ -89,6 +89,13 @@ class MidgeBadgeHub:
         self._sample_id_counter: int = 0
         self.battery_max_voltage_mv = battery_max_voltage_mv
         self._client_session_lock = Lock()
+        self.max_connections = self.__get_max_connection_batch()
+        self.async_loop = asyncio.new_event_loop()
+        thread = Thread(target=self.async_loop.run_forever, daemon=True)
+        thread.start()
+
+    def __get_max_connection_batch(self) -> int:
+        return 1
 
     def init_experiment(self) -> None:
         init_trace = []
@@ -137,13 +144,15 @@ class MidgeBadgeHub:
             mac = None if badge.mac == "any" else badge.mac
             reserved_macs = [b.mac for g in self._experiment.groups for b in g.badges if b.mac != "any"]
             client = MidgeBadgeClient(address=mac, reserved_macs=reserved_macs)
-            thread = Thread(target=lambda: asyncio.run(client.start()), daemon=True)
-            thread.start()
+
+            fut = asyncio.run_coroutine_threadsafe(client.start(), self.async_loop)
+            # thread = Thread(target=lambda: asyncio.run(client.start()), daemon=True)
+            # thread.start()
             try:
                 timeout_seconds = CONNECTION_TIMEOUT_SECONDS
                 start = time_ns()
                 while not client.get_connected() and ((time_ns() - start) / 1_000_000_000) < timeout_seconds:
-                    sleep(0.1)
+                    sleep(1)
 
                 responses = []
                 if not client.get_connected():
@@ -168,7 +177,8 @@ class MidgeBadgeHub:
                         responses.append(resp)
             finally:
                 client.stop()  # Stop the client after getting the response
-                thread.join()  # Wait for the thread to finish
+                fut.cancel()
+                # thread.join()  # Wait for the thread to finish
             return BadgeCmdExecResult(badge=badge, responses=responses)
 
     def get_selected_badge(self) -> BadgeSchema | None:
@@ -206,10 +216,29 @@ class MidgeBadgeHub:
         else:
             for group in self._experiment.groups:
                 badge_results: list[BadgeCmdExecResult] = []
-                for badge in group.badges:
-                    if filter(group, badge):
-                        resp = self.__execute_cmds(badge, cmds)
-                        badge_results.append(resp)
+                # split badges into batches of max_connections
+                badge_batches = []
+                for i in range(0, len(group.badges), self.max_connections):
+                    badge_batches.append(group.badges[i : i + self.max_connections])
+
+                for batch in badge_batches:
+                    threads = []
+                    batch_results = [None] * len(batch)
+                    for idx, badge in enumerate(batch):
+                        if filter(group, badge):
+
+                            def execute_and_store(idx=idx, badge=badge, batch_results=batch_results):
+                                batch_results[idx] = self.__execute_cmds(badge, cmds)
+
+                            thread = Thread(target=execute_and_store, daemon=True)
+                            threads.append(thread)
+                            thread.start()
+                    for thread in threads:
+                        thread.join()
+                    badge_results.extend(batch_results)
+                    # if filter(group, badge):
+                    #    resp = self.__execute_cmds(badge, cmds)
+                    #    badge_results.append(resp)
                 responses.append(GroupCommandExecResult(group=group, badge_results=badge_results))
         print("\r\033[K", end="")
         return responses
