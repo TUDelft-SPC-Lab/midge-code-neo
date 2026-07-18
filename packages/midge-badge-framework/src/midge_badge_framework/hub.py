@@ -228,6 +228,7 @@ class MidgeBadgeHub:
                 self._experiment.params.audio.low_freq_decimation,
                 self._experiment.params.audio.channels,
             )
+            self._sample_id_counter += 1
             result = self.execute_cmd(CommandEntry(cmd=cmd))
         return result
 
@@ -247,6 +248,7 @@ class MidgeBadgeHub:
                 self._experiment.params.imu.gyro_range_dps,
                 self._experiment.params.imu.sample_rate_hz,
             )
+            self._sample_id_counter += 1
             result = self.execute_cmd(CommandEntry(cmd=cmd))
         return result
 
@@ -266,6 +268,7 @@ class MidgeBadgeHub:
                 self._experiment.params.scan.interval,
                 0,
             )
+            self._sample_id_counter += 1
             result = self.execute_cmd(CommandEntry(cmd=cmd))
         return result
 
@@ -308,6 +311,7 @@ class MidgeBadgeHub:
                 )
             )
             cmds.append(cmd_scan)
+        self._sample_id_counter += 1
         return self.execute_cmds(cmds)
 
     def stop_all_sensors(self) -> list[GroupCommandExecResult]:
