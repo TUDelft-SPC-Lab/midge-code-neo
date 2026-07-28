@@ -44,6 +44,8 @@ class AudioMetaDataCSVfmt:
 
     AUDIO_EVENT_TYPE_TRIGGER_START = 0
     AUDIO_EVENT_TYPE_TRIGGER_STOP = 1
+    AUDIO_STATUS_BUFFER_DROPPED = -11
+    AUDIO_BUFFER_BYTES = 4096
 
     def __init__(self, file_path):
         self.file_path = file_path

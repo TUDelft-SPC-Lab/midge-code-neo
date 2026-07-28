@@ -22,6 +22,9 @@ dev = [
   "ruff>=0.15.7",
   "setuptools-scm>=8.3.1",
   "zensical>=0.0.29",
+  "pandas>=3.0.3,<4.0",
+  "seaborn>=0.13.2,<0.14",
+  "scipy>=1.18,<1.19"
 ]
 
 [tool.uv.sources]

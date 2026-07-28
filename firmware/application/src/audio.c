@@ -99,7 +99,7 @@ struct __attribute__((packed)) WavFileHeader {
 
 static int write_metadata(struct audio_meta_data* metadata) {
     char buffer[128];
-    int len = snprintf(buffer, sizeof(buffer), "%" PRIu64 ", %d,%d,%d,%d, %d\n",
+    int len = snprintf(buffer, sizeof(buffer), "%" PRIu64 ",%d,%d,%d,%d,%d\n",
                        metadata->timestamp_ms, metadata->status_code, metadata->event_type,
                        metadata->frequency_hz, metadata->num_channels, metadata->decimation);
     if (len < 0) {
@@ -153,7 +153,7 @@ static void audio_init_sampling_work_handler(struct k_work* work) {
         }
 
         ret = storage_init_sample_file(FILE_TYPE_AUDIO_METADATA, sensor_data.sample_iter);
-        char csv_header[] = "timestamp(ms), status, event, freq, channels, decimation\n";
+        char csv_header[] = "timestamp(ms),status,event,freq,channels,decimation\n";
         if (ret == 0) {
             // -1 to exclude null terminator
             ret = storage_write(FILE_TYPE_AUDIO_METADATA, csv_header, sizeof(csv_header) - 1);
