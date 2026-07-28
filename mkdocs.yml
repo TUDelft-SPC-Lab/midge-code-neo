@@ -27,6 +27,7 @@ nav:
   - Design:
       - Midge Protocol: design/protocol.md
       - Architecture diagrams: design/architecture.md
+  - Related Research: related_research.md
 
 theme:
   language: en
