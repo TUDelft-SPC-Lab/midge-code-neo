@@ -42,14 +42,24 @@
 		zephyr,code-partition = &slot0_partition;
 	};
 
-	leds {
+	/*leds {
 		compatible = "gpio-leds";
 
 		led0: led_0 {
 			gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
 			label = "Status led";
 		};
+	};*/
+
+	pwm_leds {
+		compatible = "pwm-leds";
+
+		led0: led_0 {
+			pwms = <&pwm0 0 PWM_MSEC(20) PWM_POLARITY_INVERTED>;
+			label = "PWM led";
+		};
 	};
+
 #if CLOSED_SOURCE_ICM20948
 	imu_int_pin {
 		compatible = "gpio-keys";
@@ -103,6 +113,12 @@
 		min-pdm-clk-dc = <40>;
 		max-pdm-clk-dc = <60>;
 	};
+};
+
+&pwm0 {
+	status = "okay";
+	pinctrl-0 = <&pwm0_default>;
+	pinctrl-names = "default";
 };
 
 /*&reg {
