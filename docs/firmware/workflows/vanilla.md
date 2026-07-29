@@ -17,7 +17,7 @@ any IDE or IDE-like tools.
 # Building
 
 ```Shell
-west build -p auto -b <board_name> application
+bash build.sh -b <board_name> -t <release | debug>
 ```
 
 > `board_name` corresponds to any subfolder of `firmware/boards`, e.g.

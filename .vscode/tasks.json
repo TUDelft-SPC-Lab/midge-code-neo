@@ -12,7 +12,7 @@
         {
             "label": "build-firmware",
             "type": "shell",
-            "command": "bash build.sh -b ${input:board}",
+            "command": "bash build.sh -b ${input:board} -t ${input:type}",
             "options": {
                 "cwd": "${workspaceFolder}/firmware"
             }
@@ -45,6 +45,16 @@
                 "midge_badge_v2"
             ],
             "default": "midge_badge_v1"
+        },
+        {
+            "id": "type",
+            "description": "build type",
+            "type": "pickString",
+            "options": [
+                "release",
+                "debug"
+            ],
+            "default": "debug"
         },
         {
             "id": "flashRunner",

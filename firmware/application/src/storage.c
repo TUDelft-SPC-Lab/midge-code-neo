@@ -751,7 +751,8 @@ static int get_file_name_from_index(char* path, int16_t index, void* context) {
             return -EACCES;
         } else {
             resp_data->size_bytes = file_stat.size;
-            strncpy((char*)resp_data->path, path, INTERFACE_MAX_FILE_NAME);
+            strncpy((char*)resp_data->path, path, INTERFACE_MAX_FILE_NAME - 1);
+            resp_data->path[INTERFACE_MAX_FILE_NAME - 1] = '\0';
             return 0;
         }
     }
