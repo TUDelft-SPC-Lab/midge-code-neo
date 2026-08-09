@@ -5,10 +5,7 @@
 
 LOG_MODULE_REGISTER(status_led);
 
-// #ifdef CONFIG_PWM
 #include <zephyr/drivers/led.h>
-#include <zephyr/drivers/pwm.h>
-
 #define LED_NODE DT_ALIAS(led0)
 static const struct device* status_led = DEVICE_DT_GET(DT_PARENT(LED_NODE));
 
