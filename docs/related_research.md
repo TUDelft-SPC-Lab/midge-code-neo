@@ -25,7 +25,7 @@ You might find other research precedent or related to the Mingle Midge using
 #### Datasets
 
 - [ConfLab](https://doi.org/10.4121/C.6034313.V4)
-- [COSILab]()
+- [COSILab](https://arxiv.org/abs/2607.28649)
 
 
 ## Research related to `midge-code-neo`

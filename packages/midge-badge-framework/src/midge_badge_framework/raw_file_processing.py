@@ -1,10 +1,19 @@
 from datetime import datetime
+from pathlib import Path
 
-from .files import RotationVectorEntry, ScanFileEntry, TimeSyncEntry
+from .files import RotationVectorEntry, ScanFileEntry, TimeSyncEntry, _ImuAxisEntry
 from .protocol import mingle_midge_batt_mv_to_percent
 
 
-def process_sync_entry(input_file, output_file):
+def process_sync_entry(input_file: Path, output_file: Path):
+    """
+    Processes a binary time synchronization registry file and writes the extracted data to a CSV file.
+    Args:
+        input_file (Path): Path to the binary SYNC file.
+        output_file (Path): Path to the output CSV file.
+    Returns:
+        None
+    """
     with open(output_file, "w") as out_f:
         out_f.write(
             "reference_timestamp,interpolated_timestamp,internal_timestamp,"
@@ -27,7 +36,16 @@ def process_sync_entry(input_file, output_file):
                 out_f.write(msg)
 
 
-def process_scan_entry(input_file, output_file):
+def process_scan_entry(input_file: Path, output_file: Path):
+    """
+    Processes a binary proximity scan data file and writes the extracted data to a CSV file.
+    Args:
+        input_file (Path): Path to the binary PROX file.
+        output_file (Path): Path to the output CSV file.
+    Returns:
+        None
+    """
+
     def mac_address_to_str(mac_address: bytes) -> str:
         return ":".join(f"{b:02x}" for b in mac_address)
 
@@ -51,7 +69,18 @@ def process_scan_entry(input_file, output_file):
                 )
 
 
-def process_imu_entry(input_file, output_file, entry_class):
+def process_imu_entry(input_file: Path, output_file: Path, entry_class: _ImuAxisEntry):
+    """
+    Processes a binary IMU data file (accelerometer, gyroscope, magnetometer, or rotation vector) and writes the
+    extracted data to a CSV file.
+    Args:
+        input_file (Path): Path to the binary IMU file.
+        output_file (Path): Path to the output CSV file.
+        entry_class (_ImuAxisEntry): The class representing the specific IMU data type (e.g., ImuAccelEntry,
+            ImuGyroEntry, ImuMagnetoEntry, or RotationVectorEntry).
+    Returns:
+        None
+    """
     with open(output_file, "w") as out_f:
         header = (
             f"{entry_class._fields_[0][0]},"

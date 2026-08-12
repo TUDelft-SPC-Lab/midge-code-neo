@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -8,7 +10,20 @@ from midge_badge_framework.files import (
 )
 
 
-def imu_file_graph(file_path, img_path, ylabel, axis=None, xlabel="Elapsed Time (ms)"):
+def imu_file_graph(
+    file_path: Path, img_path: Path, ylabel: str, axis: list[str] | None = None, xlabel: str = "Elapsed Time (ms)"
+):
+    """
+    Plots the values of the specified axes over time for the data in the IMU file.
+    Args:
+        file_path (Path): Path to the CSV file containing IMU data.
+        img_path (Path): Path to save the generated plot image.
+        ylabel (str): Label for the y-axis.
+        axis (list[str] | None): List of axes to plot. If None, assumes ["x", "y", "z"]. Defaults to None.
+        xlabel (str): Label for the x-axis.
+    Returns:
+        None
+    """
     if axis is None:
         axis = ["x", "y", "z"]
     print(file_path)
@@ -21,7 +36,15 @@ def imu_file_graph(file_path, img_path, ylabel, axis=None, xlabel="Elapsed Time 
     plt.close()
 
 
-def scan_file_graph(file_path, img_path):
+def scan_file_graph(file_path: Path, img_path: Path):
+    """
+    Plots the RSSI values over time for each unique address in the scan data CSV file
+    Args:
+        file_path (Path): Path to the CSV file containing scan data.
+        img_path (Path): Path to save the generated plot image.
+    Returns:
+        None
+    """
     print(file_path)
     df = pd.read_csv(file_path)
     g = sns.FacetGrid(data=df, col="addr")
@@ -32,12 +55,12 @@ def scan_file_graph(file_path, img_path):
     plt.close()
 
 
-def audio_buffer_drops_per_time_unit_graph(file_path, img_path, time_unit="ms"):
+def audio_buffer_drops_per_time_unit_graph(file_path: Path, img_path: Path, time_unit: str = "ms"):
     """
     Plots the number of audio buffer drops over time, with the time unit specified.
     Args:
-        file_path (str): Path to the CSV file containing audio metadata.
-        img_path (str): Path to save the generated plot image.
+        file_path (Path): Path to the CSV file containing audio metadata.
+        img_path (Path): Path to save the generated plot image.
         time_unit (str): Time unit for the x-axis. Options are "hr", "minute", "ms".
 
     Returns:
@@ -87,12 +110,12 @@ def audio_buffer_drops_per_time_unit_graph(file_path, img_path, time_unit="ms"):
     return lr
 
 
-def sync_analysis_graph(file_path, img_path):
+def sync_analysis_graph(file_path: Path, img_path: Path):
     """
     Performs time synchronization analysis on the provided CSV file and generates a plot.
     Args:
-        file_path (str): Path to the CSV file containing time synchronization data.
-        img_path (str): Path to save the generated plot image.
+        file_path (Path): Path to the CSV file containing time synchronization data.
+        img_path (Path): Path to save the generated plot image.
 
     Returns:
         lr (LinregressResult): The result of the linear regression performed on the time sync data.
@@ -100,9 +123,9 @@ def sync_analysis_graph(file_path, img_path):
     df = pd.read_csv(file_path)
     df.drop(columns=["reference_datetime", "interpolated_datetime", "internal_datetime"], inplace=True)
 
-    ## normalize first
     df = df[1:]  # drop first sample as it is the calibration sample
     col = df.iloc[0, :]
+    # Subtract the first row from all rows to normalize the data
     df = df.apply(lambda x: x - col, axis=1)
 
     df["delta(ms)"] = df["internal_timestamp"] - df["reference_timestamp"]
