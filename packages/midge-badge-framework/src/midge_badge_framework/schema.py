@@ -67,6 +67,21 @@ class ExperimentSchema(BaseModel):
             raise ValueError(msg)
         return groups
 
+    @field_validator("groups")
+    def validate_unique_badge_macs_across_groups(cls, groups):
+        badge_macs = []
+        for group in groups:
+            for badge in group.badges:
+                if badge.mac not in badge_macs:
+                    badge_macs.append(badge.mac)
+                elif badge.mac == "any":
+                    pass
+                else:
+                    msg = f"Duplicate badge MAC address found across groups ID: {badge.id} MAC: {badge.mac}"
+                    raise ValueError(msg)
+
+        return groups
+
     @staticmethod
     def load_from_yaml(file_path: str) -> ExperimentSchema:
         yaml = YAML(typ="safe")

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 import cmd
 import pathlib
 import shlex
@@ -9,6 +8,8 @@ from time import time_ns
 
 from midge_badge_framework.hub import GroupCommandExecResult, MidgeBadgeHub, MidgeBadgeHubException
 from midge_badge_framework.schema import BadgeSchema, ExperimentSchema
+
+MSG_NOT_INITIALIZED = "Experiment not initialized. Please run 'init' first."
 
 
 class HubCLI(cmd.Cmd):
@@ -18,6 +19,7 @@ class HubCLI(cmd.Cmd):
     def __init__(self, yaml_file: str):
         super().__init__()
         self.hub: MidgeBadgeHub = MidgeBadgeHub(yaml_file)
+        self.initialized: bool = False
 
     def onecmd(self, line: str) -> bool | None:
         try:
@@ -57,6 +59,7 @@ class HubCLI(cmd.Cmd):
         """init: Initialize experiment by connecting to badges and performing checks."""
         _ = arg
         self.hub.init_experiment()
+        self.initialized = True
         print("Experiment initialized")
 
     def do_experiment(self, arg: str) -> None:
@@ -140,41 +143,57 @@ class HubCLI(cmd.Cmd):
     def do_start_mic(self, arg: str) -> None:
         """start_mic: Start microphone sampling."""
         _ = arg
+        if not self.initialized:
+            raise MidgeBadgeHubException(MSG_NOT_INITIALIZED)
         self._print_response_rows(self.hub.start_mic())
 
     def do_stop_mic(self, arg: str) -> None:
         """stop_mic: Stop microphone sampling."""
         _ = arg
+        if not self.initialized:
+            raise MidgeBadgeHubException(MSG_NOT_INITIALIZED)
         self._print_response_rows(self.hub.stop_mic())
 
     def do_start_imu(self, arg: str) -> None:
         """start_imu: Start IMU sampling."""
         _ = arg
+        if not self.initialized:
+            raise MidgeBadgeHubException(MSG_NOT_INITIALIZED)
         self._print_response_rows(self.hub.start_imu())
 
     def do_stop_imu(self, arg: str) -> None:
         """stop_imu: Stop IMU sampling."""
         _ = arg
+        if not self.initialized:
+            raise MidgeBadgeHubException(MSG_NOT_INITIALIZED)
         self._print_response_rows(self.hub.stop_imu())
 
     def do_start_scan(self, arg: str) -> None:
         """start_scan: Start BLE scan sensing."""
         _ = arg
+        if not self.initialized:
+            raise MidgeBadgeHubException(MSG_NOT_INITIALIZED)
         self._print_response_rows(self.hub.start_scan())
 
     def do_stop_scan(self, arg: str) -> None:
         """stop_scan: Stop BLE scan sensing."""
         _ = arg
+        if not self.initialized:
+            raise MidgeBadgeHubException(MSG_NOT_INITIALIZED)
         self._print_response_rows(self.hub.stop_scan())
 
     def do_start_all(self, arg: str) -> None:
         """start_all: Start all enabled sensors."""
         _ = arg
+        if not self.initialized:
+            raise MidgeBadgeHubException(MSG_NOT_INITIALIZED)
         self._print_response_rows(self.hub.start_all_sensors())
 
     def do_stop_all(self, arg: str) -> None:
         """stop_all: Stop all enabled sensors."""
         _ = arg
+        if not self.initialized:
+            raise MidgeBadgeHubException(MSG_NOT_INITIALIZED)
         self._print_response_rows(self.hub.stop_all_sensors())
 
     def do_sd_free_space(self, arg: str) -> None:
@@ -264,10 +283,6 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-async def runner(cli: HubCLI) -> None:
-    cli.cmdloop()
-
-
 def main_sync() -> None:
     parser = _build_parser()
     args = parser.parse_args()
@@ -277,8 +292,7 @@ def main_sync() -> None:
     if args.run:
         cli.onecmd(args.run)
         return
-
-    asyncio.run(runner(cli))
+    cli.cmdloop()
 
 
 if __name__ == "__main__":
