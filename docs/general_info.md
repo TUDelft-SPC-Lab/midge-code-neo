@@ -3,7 +3,7 @@
 ## Index
 
 - [Installation](#installation)
-- [Running the main script](#running-the-main-script)
+- [Available scripts](#available-scripts)
 - [Adding dependencies](#adding-dependencies)
 - [Running test](#running-tests)
 - [Formatting and checking](#formatting-and-checking)
@@ -34,13 +34,21 @@ This will set up prek to run the checks automatically on your files before you c
 
   **Remember that if the prek checks fail, you can always commit by skipping the checks with `git commit --no-verify`**
 
-## Running the main script
+## Available scripts
 
-Execute the main script with
+The repo provides multiple scripts to work with the Mingle Midge.
 
-```bash
-uv run main_script
-```
+The following tables gives an overview of these.
+For additional details see the the [Usage](usage/data_collection.md) section
+
+| Script | Application |
+| ------ | ----------- |
+| `uv run tester` | Interactive CLI to test a single Mingle Midge over BLE |
+| `uv run hub_cli` | Run a data collection experiment across several Midges |
+| `uv run extract_data` | Extract data from a Midge SD card and run the parsers on it |
+| `uv run scan_parse` | Parse raw scan data |
+| `uv run imu_parse` | Parse raw IMU data |
+| `uv run timesync_parse` | Parse raw time synchronization data |
 
 ## Adding dependencies
 
@@ -91,7 +99,7 @@ This will run the checks on all files in your git project, regardless of whether
 Generate the documentation locally with
 
 ```bash
-uv run mkdocs serve --livereload
+uv run zensical serve
 ```
 
 ## Versions
