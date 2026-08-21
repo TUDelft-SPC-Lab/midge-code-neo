@@ -28,7 +28,7 @@ LOG_MODULE_REGISTER(mb_audio);
  * data, needs to free that block.
  */
 #define MAX_BLOCK_SIZE 4096  //(BLOCK_SIZE(MAX_SAMPLE_RATE, 2)) / 2
-#define BLOCK_COUNT 5
+#define BLOCK_COUNT CONFIG_MCN_AUDIO_BUFFERS
 
 struct k_mem_slab mem_slab;
 char mem_slab_buffer[BLOCK_COUNT * MAX_BLOCK_SIZE] __aligned(4);
