@@ -1,12 +1,9 @@
 
 /dts-v1/;
-#include <nordic/nrf52832_qfaa.dtsi>
-#include "midge_badge_v1-pinctrl.dtsi"
+#include <nordic/nrf52840_qfaa.dtsi>
+#include "midge_badge_v2-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
-#define CLOSED_SOURCE_ICM20948 1
-#if CLOSED_SOURCE_ICM20948 == 0
-#include <zephyr/dt-bindings/sensor/icm20948.h>
-#endif
+#include <zephyr/dt-bindings/sensor/lsm6dso.h>
 /**
  * LED_IND PO.03 pin 19
  * SCL     PO.02 pin 15
@@ -28,8 +25,8 @@
 
 
 / {
-	model = "midge_badge_v1";
-	compatible = "others,midge-badge-v1";
+	model = "midge_badge_v2";
+	compatible = "others,midge-badge-v2";
 
 	chosen {
 		/*zephyr,console = &uart0;
@@ -60,17 +57,6 @@
 		};
 	};
 
-#if CLOSED_SOURCE_ICM20948
-	imu_int_pin {
-		compatible = "gpio-keys";
-
-		imu_int: imu_int_pin {
-			gpios = <&gpio0 30 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-			label = "IMU interrupt pin";
-		};
-	};
-#endif
-
 	switch_pos {
 		compatible= "gpio-keys";
 
@@ -100,10 +86,8 @@
 		sw-audio-high = &sw_audio_high;
 		mcuboot-led0 = &led0;
 		mic-params = &audio_mic;
-		imu-i2c = &i2c1;
-#if CLOSED_SOURCE_ICM20948
-		imu-int = &imu_int;
-#endif
+		imu-dev = &imu;
+		mag-dev = &mag;
 	};
 
 	audio_mic: microphone {
@@ -164,7 +148,7 @@
 	status = "okay";
 };
 
-&spi1 {
+&spi3 {
 	compatible = "nordic,nrf-spim";
 	status = "okay";
 	pinctrl-names = "default", "sleep";
@@ -181,7 +165,7 @@
 			disk-name = "SD";
 			status = "okay";
 		};
-		spi-max-frequency = <8000000>; // Max SPI clk supported by nrf52832
+		spi-max-frequency = <8000000>;
 	};
 };
 
@@ -192,7 +176,7 @@ dmic_dev: &pdm0 {
 	clock-source = "PCLK32M_HFXO";
 };
 
-&i2c0 {
+&i2c1 {
 	compatible = "nordic,nrf-twim";
 	status = "okay";
 	pinctrl-0 = <&i2c0_default>;
@@ -202,18 +186,24 @@ dmic_dev: &pdm0 {
 	zephyr,concat-buf-size = <255>;
 	zephyr,flash-buf-max-size = <255>;
 
-	imu: icm20948@68 {
-#if CLOSED_SOURCE_ICM20948
-		compatible = "invensense,i2c-device";
-#else
-		compatible = "invensense,icm20948";
-		int-gpios = <&gpio0 30 GPIO_ACTIVE_HIGH>;
-		mag-mode = <ICM20948_DT_MAG_MODE_50HZ>; /* 50Hz magnetometer */
-		gyro-fs = <ICM20948_DT_GYRO_FS_1000>; /* 1000 dps gyro full scale */
-		accel-fs = <ICM20948_DT_ACCEL_FS_4>; /* 4 g accel full scale */
-#endif
+	mag: ak09918@c {
+		compatible = "asahi-kasei,akm09918c";
+		reg = <0x0c>;
 		status = "okay";
-		reg = <0x68>;
+	};
+
+	imu: lsm6dso@6b {
+		compatible = "st,lsm6dso";
+		reg = <0x6b>;
+		status = "okay";
+		irq-gpios = <&gpio0 30 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+		/*int-pin = <1>;*/
+		accel-range = <LSM6DSO_DT_FS_4G>;
+		accel-odr = <LSM6DSO_DT_ODR_52Hz>;
+		/*accel-pm = <LSM6DSO_DT_XL_LP_NORMAL_MODE>;*/
+		/*gyro-pm = <LSM6DSO_DT_GY_NORMAL_MODE>;*/
+		gyro-range = <LSM6DSO_DT_FS_1000DPS>;
+		gyro-odr = <LSM6DSO_DT_ODR_52Hz>;
 	};
 };
 

@@ -1,0 +1,16 @@
+if BOARD_MIDGE_BADGE_V2
+
+menu "midge_badge_v2 specific options"
+
+choice MIDGE_SEL_IMU
+	prompt "IMU selection"
+	default MIDGE_SEL_IMU_GENERIC_MAG_COMBO
+
+config MIDGE_SEL_IMU_GENERIC_MAG_COMBO
+	bool "Generic IMU + Magnetometer combo"
+
+endchoice
+
+endmenu
+
+endif # BOARD_MIDGE_BADGE_V2

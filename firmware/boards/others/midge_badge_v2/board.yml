@@ -1,0 +1,6 @@
+board:
+  name: midge_badge_v2
+  full_name: SPCL Midge Badge v2
+  vendor: others
+  socs:
+    - name: nrf52840

@@ -1,2 +1,22 @@
 
 source "Kconfig.zephyr"
+
+menu "MIDGE CODE NEO application configuration"
+
+config MCN_AUDIO_BUFFERS
+    int "Audio Buffer count"
+    default 5
+    range 2 100
+    help
+        Number of audio buffers to use for audio input. Every audio buffer is
+        4096 bytes in size.
+
+config MCN_PROXIMITY_BUFFERS
+    int "Proximity Buffer count"
+    default 2
+    range 2 100
+    help
+        Number of proximity buffers to use for proximity sensor data. Every
+        proximity buffer contains 25 samples
+
+endmenu

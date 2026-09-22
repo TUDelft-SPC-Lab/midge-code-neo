@@ -4,6 +4,8 @@ target_include_directories(app PRIVATE
 
 if(CONFIG_MIDGE_SEL_IMU_ICM20948)
     add_subdirectory(icm20948)
+elseif(CONFIG_MIDGE_SEL_IMU_GENERIC_MAG_COMBO)
+    add_subdirectory(generic_imu_mag_combo)
 elseif(CONFIG_MIDGE_SEL_IMU_ICM42605)
     add_subdirectory(icm42605)
 else()

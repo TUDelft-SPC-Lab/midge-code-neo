@@ -57,4 +57,4 @@ fi
 echo CONF_FILE=$CONF_FILE
 
 wget -O /tmp/chip.svd https://raw.githubusercontent.com/embassy-rs/nrf-pac/refs/heads/main/svd/${CHIP}.svd;
-west build -p auto -b ${BOARD} application -- -DEXTRA_CONF_FILE=${CONF_FLAGS}
+west build -p auto -b ${BOARD} application -- -DEXTRA_CONF_FILE=${CONF_FILE}
