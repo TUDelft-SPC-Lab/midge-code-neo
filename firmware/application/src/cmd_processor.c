@@ -265,30 +265,17 @@ static struct bt_data sd[] = {
     BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_NUS_SRV_VAL),
 };
 
-#define ADVERTISED_DATA_THREAD_STACK_SIZE 512
-#define ADVERTISED_DATA_THREAD_PRIORITY K_LOWEST_APPLICATION_THREAD_PRIO
-
-K_THREAD_STACK_DEFINE(advertised_data_thread_stack, ADVERTISED_DATA_THREAD_STACK_SIZE);
-static struct k_thread advertised_data_thread_data;
-
-static void adv_data_update(void) {
+static struct k_work_delayable advertised_data_work;
+static void advertised_data_work_handler(struct k_work* work) {
+    ARG_UNUSED(work);
+    LOG_DBG("Updating advertised data");
     int16_t mv = 0;
     if (battery_charge_get_mv(&mv) == 0) {
         advertised_data.battery_mv = (uint16_t)mv;
     }
     advertised_data.active_sensor_bitflags = storage_get_active_sensor_bitflags();
     bt_le_adv_update_data(ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
-}
-
-static void advertised_data_thread(void* arg1, void* arg2, void* arg3) {
-    ARG_UNUSED(arg1);
-    ARG_UNUSED(arg2);
-    ARG_UNUSED(arg3);
-
-    while (true) {
-        adv_data_update();
-        k_sleep(K_SECONDS(1));
-    }
+    k_work_reschedule(&advertised_data_work, K_SECONDS(1));
 }
 
 static void notif_enabled(bool enabled, void* ctx) {
@@ -352,9 +339,8 @@ int cmd_processor_init(void) {
         return err;
     }
 
-    k_thread_create(&advertised_data_thread_data, advertised_data_thread_stack,
-                    K_THREAD_STACK_SIZEOF(advertised_data_thread_stack), advertised_data_thread,
-                    NULL, NULL, NULL, ADVERTISED_DATA_THREAD_PRIORITY, 0, K_SECONDS(2));
+    k_work_init_delayable(&advertised_data_work, advertised_data_work_handler);
+    k_work_schedule(&advertised_data_work, K_SECONDS(2));
     LOG_INF("Initialization complete");
     return 0;
 }
