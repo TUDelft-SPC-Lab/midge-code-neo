@@ -27,6 +27,11 @@ And modify the setup as follows.
           path: modules/hal/nordic
           groups:
             - hal
+        - name: hal_st
+          revision: e9f0468ade3c06d5e3961e3821543dd67c7ea7f0
+          path: modules/hal/st
+          groups:
+            - hal
         - name: mcuboot
           revision: 0fae8920c4e5acb792b3fe766c89c668f42be6ee
           path: bootloader/mcuboot
