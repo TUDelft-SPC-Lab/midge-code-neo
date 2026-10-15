@@ -95,8 +95,10 @@ re-apply the trimmed project list using the revisions from the new `west.yml`.
 Then finish with:
 
 ```Shell
+cd ~/zephyrproject
 west update
 west packages pip --install
+cd ~/zephyrproject/zephyr
 west sdk install -t arm-zephyr-eabi
 ```
 
@@ -112,8 +114,15 @@ cd ~/zephyrproject/zephyr
 git remote add josfemova git@github.com:Josfemova/zephyr.git
 git fetch josfemova
 git checkout josfemova/dev_main # rebased on top of zephyr latest
+```
+
+As when [changing the zephyr version](#changing-the-zephyr-version), the checkout fails if `west.yml` has local changes, so discard them first with `git checkout -- west.yml`.
+After the checkout, re-apply the trimmed project list using the revisions from the fork's `west.yml`, plus any extra module the feature needs. Then finish with:
+
+```Shell
 cd ~/zephyrproject
 west update
 west packages pip --install
-west sdk install
+cd ~/zephyrproject/zephyr
+west sdk install -t arm-zephyr-eabi
 ```
