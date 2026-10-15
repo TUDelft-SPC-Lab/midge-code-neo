@@ -9,8 +9,8 @@ And modify the setup as follows.
 
 * Use the default `~/zephyrproject/.venv` when following the instructions.
 * **Before running `west update`** do the following
-    * Checkout version `v4.5.0-rc1` of zephyr, follow the steps in [chaning the zephyr version](#changing-the-zephyr-version)
-    * In the `~/zephyrproject/zephyr/west.yml` set the projects to only what is needed for the midge **before running `west update`**:
+    * Checkout version `v4.5.0-rc1` of zephyr, follow the steps in [changing the zephyr version](#changing-the-zephyr-version)
+    * In the `~/zephyrproject/zephyr/west.yml` set the projects to only what is needed for the midge:
 
       ```yaml
       projects:
@@ -46,7 +46,7 @@ And modify the setup as follows.
           groups:
             - debug
       ```
-* Instead of `west sdk install`, install only the necessary sdk one for the midge
+* Instead of `west sdk install`, install only the SDK toolchain the midge needs
     ```bash
     west sdk install -t arm-zephyr-eabi
     ```
@@ -67,7 +67,7 @@ source env.sh # sets up environment variables and activates venv
 west build -p always application # Build for Mingle Midge v1 by default
 ```
 
-If you get an error, discard it's a missing tool what's causing it. If the
+If you get an error, first check that it isn't caused by a missing tool. If the
 error is a compilation error, [open an issue](https://github.com/TUDelft-SPC-Lab/midge-code-neo/issues)
 The likely reason is a newer version of Zephyr introducing breaking changes.
 
@@ -82,11 +82,22 @@ assuming you installed Zephyr in your home folder:
 
 ```Shell
 cd ~/zephyrproject/zephyr
-git fetch
-git checkout origin/v4.5.0
+git fetch --tags
+git checkout v4.5.0
+```
+
+If you are doing this as part of the first-time setup, stop here and go back to
+editing `west.yml`.
+
+On an existing install, the checkout fails if `west.yml` has local changes.
+Discard them first with `git checkout -- west.yml`, and after the checkout
+re-apply the trimmed project list using the revisions from the new `west.yml`.
+Then finish with:
+
+```Shell
 west update
 west packages pip --install
-west sdk install
+west sdk install -t arm-zephyr-eabi
 ```
 
 ## Setting up a custom remote
