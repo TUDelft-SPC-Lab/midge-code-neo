@@ -8,32 +8,35 @@ guide but omit what comes after building the blinky example.
 And modify the setup as follows.
 
 * Use the default `~/zephyrproject/.venv` when following the instructions.
-* In the `~/zephyrproject/zephyr/west.yml` set the projects to only what is needed for the midge **before running `west update`**:
-    ```yaml
+* **Before running `west update`** do the following
+    * Checkout version `v4.5.0-rc1` of zephyr, follow the steps in [chaning the zephyr version](#changing-the-zephyr-version)
+    * In the `~/zephyrproject/zephyr/west.yml` set the projects to only what is needed for the midge **before running `west update`**:
+
+      ```yaml
       projects:
         - name: cmsis_6
           repo-path: CMSIS_6
-          revision: b2dfbe1a20bbd49c2d2c605073799671074bbb30
+          revision: 1c1840af7a7e757d6e2fec3ddb0e5ce0dfcc93c8
           path: modules/hal/cmsis_6
           groups:
             - hal
         - name: fatfs
-          revision: f4ead3bf4a6dab3a07d7b5f5315795c073db568d
+          revision: 4f60a12c58c3de4246857ad87c40239ecd93349b
           path: modules/fs/fatfs
           groups:
             - fs
         - name: hal_nordic
-          revision: 18da0cc9726f8759c627dba3180b3ba9294e433c
+          revision: 58c060befc11f3029212bf4246fd3ca471328861
           path: modules/hal/nordic
           groups:
             - hal
         - name: hal_st
-          revision: e9f0468ade3c06d5e3961e3821543dd67c7ea7f0
+          revision: ce795a9b0de623022c17d2ff394587c024aec850
           path: modules/hal/st
           groups:
             - hal
         - name: mcuboot
-          revision: 0fae8920c4e5acb792b3fe766c89c668f42be6ee
+          revision: c85af35b875d244cf91f8ec3caa04168fc7f1ec1
           path: bootloader/mcuboot
           groups:
             - bootloader
@@ -42,8 +45,8 @@ And modify the setup as follows.
           path: modules/debug/segger
           groups:
             - debug
-    ```
-* On the sdk install only pull the necessary one for the midge
+      ```
+* Instead of `west sdk install`, install only the necessary sdk one for the midge
     ```bash
     west sdk install -t arm-zephyr-eabi
     ```
