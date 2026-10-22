@@ -8,27 +8,35 @@ guide but omit what comes after building the blinky example.
 And modify the setup as follows.
 
 * Use the default `~/zephyrproject/.venv` when following the instructions.
-* In the `~/zephyrproject/zephyr/west.yml` set the projects to only what is needed for the midge **before running `west update`**:
-    ```yaml
+* **Before running `west update`** do the following
+    * Checkout version `v4.5.0-rc1` of zephyr, follow the steps in [changing the zephyr version](#changing-the-zephyr-version)
+    * In the `~/zephyrproject/zephyr/west.yml` set the projects to only what is needed for the midge:
+
+      ```yaml
       projects:
         - name: cmsis_6
           repo-path: CMSIS_6
-          revision: b2dfbe1a20bbd49c2d2c605073799671074bbb30
+          revision: 1c1840af7a7e757d6e2fec3ddb0e5ce0dfcc93c8
           path: modules/hal/cmsis_6
           groups:
             - hal
         - name: fatfs
-          revision: f4ead3bf4a6dab3a07d7b5f5315795c073db568d
+          revision: 4f60a12c58c3de4246857ad87c40239ecd93349b
           path: modules/fs/fatfs
           groups:
             - fs
         - name: hal_nordic
-          revision: 18da0cc9726f8759c627dba3180b3ba9294e433c
+          revision: 58c060befc11f3029212bf4246fd3ca471328861
           path: modules/hal/nordic
           groups:
             - hal
+        - name: hal_st
+          revision: ce795a9b0de623022c17d2ff394587c024aec850
+          path: modules/hal/st
+          groups:
+            - hal
         - name: mcuboot
-          revision: 0fae8920c4e5acb792b3fe766c89c668f42be6ee
+          revision: c85af35b875d244cf91f8ec3caa04168fc7f1ec1
           path: bootloader/mcuboot
           groups:
             - bootloader
@@ -37,8 +45,8 @@ And modify the setup as follows.
           path: modules/debug/segger
           groups:
             - debug
-    ```
-* On the sdk install only pull the necessary one for the midge
+      ```
+* Instead of `west sdk install`, install only the SDK toolchain the midge needs
     ```bash
     west sdk install -t arm-zephyr-eabi
     ```
@@ -59,7 +67,7 @@ source env.sh # sets up environment variables and activates venv
 west build -p always application # Build for Mingle Midge v1 by default
 ```
 
-If you get an error, discard it's a missing tool what's causing it. If the
+If you get an error, first check that it isn't caused by a missing tool. If the
 error is a compilation error, [open an issue](https://github.com/TUDelft-SPC-Lab/midge-code-neo/issues)
 The likely reason is a newer version of Zephyr introducing breaking changes.
 
@@ -74,11 +82,24 @@ assuming you installed Zephyr in your home folder:
 
 ```Shell
 cd ~/zephyrproject/zephyr
-git fetch
-git checkout origin/v4.5.0
+git fetch --tags
+git checkout v4.5.0
+```
+
+If you are doing this as part of the first-time setup, stop here and go back to
+editing `west.yml`.
+
+On an existing install, the checkout fails if `west.yml` has local changes.
+Discard them first with `git checkout -- west.yml`, and after the checkout
+re-apply the trimmed project list using the revisions from the new `west.yml`.
+Then finish with:
+
+```Shell
+cd ~/zephyrproject
 west update
 west packages pip --install
-west sdk install
+cd ~/zephyrproject/zephyr
+west sdk install -t arm-zephyr-eabi
 ```
 
 ## Setting up a custom remote
@@ -93,8 +114,15 @@ cd ~/zephyrproject/zephyr
 git remote add josfemova git@github.com:Josfemova/zephyr.git
 git fetch josfemova
 git checkout josfemova/dev_main # rebased on top of zephyr latest
+```
+
+As when [changing the zephyr version](#changing-the-zephyr-version), the checkout fails if `west.yml` has local changes, so discard them first with `git checkout -- west.yml`.
+After the checkout, re-apply the trimmed project list using the revisions from the fork's `west.yml`, plus any extra module the feature needs. Then finish with:
+
+```Shell
 cd ~/zephyrproject
 west update
 west packages pip --install
-west sdk install
+cd ~/zephyrproject/zephyr
+west sdk install -t arm-zephyr-eabi
 ```
